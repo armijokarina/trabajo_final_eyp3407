@@ -14,9 +14,7 @@ transacciones_complejas <- transacciones_dvf %>%
 View(transacciones_complejas)
 
 
-<<<<<<< HEAD
 
-#Holaaaaaa
-=======
-#probando
->>>>>>> 8752384b9e99c49610357fced0721889001148e5
+## lO
+
+
