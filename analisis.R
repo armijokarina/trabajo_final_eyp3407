@@ -1,4 +1,7 @@
 library(dplyr)
+#########################################
+#### Todas las posibles Combinaciones ###
+#########################################
 combinaciones_detalladas <- transacciones_dvf %>%
   # 1. Para que los espacios vacíos no queden raros, les ponemos un nombre claro
   mutate(type_local = if_else(is.na(type_local), "Sin Tipo", type_local)) %>%
@@ -26,6 +29,9 @@ combinaciones_detalladas <- transacciones_dvf %>%
 View(combinaciones_detalladas)
 sum(combinaciones_detalladas$n)
 
+##########################################
+### Eliminamos Todas las duplicaciones####
+##########################################
 df_limpio <- transacciones_dvf[!duplicated(transacciones_dvf), ]
 
 combinaciones_detalladas <- df_limpio %>%
@@ -55,6 +61,9 @@ combinaciones_detalladas <- df_limpio %>%
 View(combinaciones_detalladas)
 sum(combinaciones_detalladas$n)
 
+###########################
+#### Eliminación todas ####
+###########################
 
 df_limpio_sin_comercial <- df_limpio %>%
   group_by(id_mutation) %>%
