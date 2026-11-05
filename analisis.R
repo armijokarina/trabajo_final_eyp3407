@@ -1,4 +1,29 @@
 library(dplyr)
+combinaciones_detalladas <- transacciones_dvf %>%
+  # 1. Para que los espacios vacíos no queden raros, les ponemos un nombre claro
+  mutate(type_local = if_else(is.na(type_local), "Sin Tipo", type_local)) %>%
+
+  # 2. Agrupamos por transacción Y por tipo de local para contar cuántos hay de cada uno
+  group_by(id_mutation, type_local) %>%
+  summarise(cantidad = n(), .groups = "drop") %>%
+
+  # 3. Creamos la etiqueta específica (Ej: "2 Appartement", "1 Maison")
+  mutate(etiqueta = paste(cantidad, type_local)) %>%
+
+  # 4. Volvemos a agrupar solo por transacción para unir todas sus etiquetas
+  group_by(id_mutation) %>%
+  # Ordenamos alfabéticamente para que "A + B" sea igual a "B + A"
+  arrange(type_local, .by_group = TRUE) %>%
+  summarise(
+    combinacion = paste(etiqueta, collapse = " + ")
+  ) %>%
+  ungroup() %>%
+
+  # 5. Contamos cuántas veces se repite cada combinación final en la base completa
+  count(combinacion, sort = TRUE)
+
+# Visualizamos la tabla
+View(combinaciones_detalladas)
 ventas_multiples <- transacciones_dvf %>%
   # Agrupamos por el identificador de la compraventa
   group_by(id_mutation) %>%
@@ -17,10 +42,7 @@ View(ventas_multiples)
 
 # Si quieres saber rápidamente cuántas transacciones únicas son:
 n_distinct(ventas_multiples$id_mutation)
-Por qué es importante revisar esto para tu proyecto:
-  Al explorar esta tabla, verás casos de ventas en bloque (por ejemplo, un inversionista que compró dos departamentos juntos, o un terreno con dos casas construidas). En estos registros, el precio total (valeur_fonciere) corresponde a la suma de ambos inmuebles.
-
-Dado que las reglas de tu encargo exigen evaluar el valor de un único inmueble residencial principal y excluir las transacciones complejas donde no puedas separar el precio de forma fiable, todas las transacciones que aparezcan en esta tabla ventas_multiples deberán ser cuantificadas y eliminadas de tu base analítica final.
+P
 EYP3407_trabajo_final (2).pdf
 transacciones_complejas <- transacciones_dvf %>%
   group_by(id_mutation) %>%
