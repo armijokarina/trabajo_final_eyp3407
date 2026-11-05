@@ -1,5 +1,27 @@
 library(dplyr)
+ventas_multiples <- transacciones_dvf %>%
+  # Agrupamos por el identificador de la compraventa
+  group_by(id_mutation) %>%
 
+  # Retenemos la transacción completa si tiene 2 o más Casas, O 2 o más Departamentos
+  filter(
+    sum(type_local == "Maison", na.rm = TRUE) >= 2 |
+      sum(type_local == "Appartement", na.rm = TRUE) >= 2
+  ) %>%
+
+  # Desagrupamos
+  ungroup()
+
+# Para visualizar estas transacciones en la consola o visor de R
+View(ventas_multiples)
+
+# Si quieres saber rápidamente cuántas transacciones únicas son:
+n_distinct(ventas_multiples$id_mutation)
+Por qué es importante revisar esto para tu proyecto:
+  Al explorar esta tabla, verás casos de ventas en bloque (por ejemplo, un inversionista que compró dos departamentos juntos, o un terreno con dos casas construidas). En estos registros, el precio total (valeur_fonciere) corresponde a la suma de ambos inmuebles.
+
+Dado que las reglas de tu encargo exigen evaluar el valor de un único inmueble residencial principal y excluir las transacciones complejas donde no puedas separar el precio de forma fiable, todas las transacciones que aparezcan en esta tabla ventas_multiples deberán ser cuantificadas y eliminadas de tu base analítica final.
+EYP3407_trabajo_final (2).pdf
 transacciones_complejas <- transacciones_dvf %>%
   group_by(id_mutation) %>%
   # Retenemos solo los id_mutation que tienen al menos una fila de cada uno de estos 3 tipos
