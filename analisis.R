@@ -61,9 +61,6 @@ combinaciones_detalladas <- df_limpio %>%
 View(combinaciones_detalladas)
 sum(combinaciones_detalladas$n)
 
-###########################
-#### Eliminación todas ####
-###########################
 
 df_limpio_sin_comercial <- df_limpio %>%
   group_by(id_mutation) %>%
@@ -96,3 +93,4 @@ combinaciones_detalladas <- df_limpio_sin_comercial %>%
 
 # Visualizamos la tabla
 View(combinaciones_detalladas)
+#### Comentario oooo
