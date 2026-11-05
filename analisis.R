@@ -52,35 +52,24 @@ base_limpia <- base_etiquetada %>%
   select(-tiene_comercial, -tiene_app, -tiene_maison, -motivo_exclusion)
 print(base_limpia)
 
+resumen_combinaciones <- base_limpia %>%
+  # 1. Filtramos los registros sin tipo de local para que no ensucien el texto
+  filter(!is.na(type_local)) %>%
 
-
-library(dplyr)
-
-filas_na <- base_limpia %>%
-  filter(is.na(code_type_local))
-
-# Para visualizar el grupo
-View(filas_na)
-
-
-base_etiquetada_na <- base_limpia %>%
+  # 2. Agrupamos por identificador de transacción
   group_by(id_mutation) %>%
-  mutate(
-    # Evaluamos si TODA la transacción cumple la condición de ser puro NA en tipo y superficie
-    es_terreno_vacio = all(is.na(code_type_local)) & all(is.na(lot1_surface_carrez)),
 
-    # Asignamos una etiqueta
-    estado_filtro = if_else(es_terreno_vacio, "Borrado: Solo NA y sin superficie Carrez", "Conservado")
-  ) %>%
-  ungroup()
-
-# 2. Creamos el conteo de qué se borró y con cuántas transacciones te quedas
-resumen_filtro_na <- base_etiquetada_na %>%
-  group_by(estado_filtro) %>%
+  # 3. Extraemos los tipos únicos de esa transacción, los ordenamos alfabéticamente
+  # y los unimos en una sola frase separados por " + "
   summarise(
-    total_filas = n(),
-    total_transacciones = n_distinct(id_mutation) # Cuenta los id_mutation únicos
-  )
+    combinacion = paste(sort(unique(type_local)), collapse = " + ")
+  ) %>%
 
-# Imprimimos la tabla para que la uses en tu informe
-print(resumen_filtro_na)
+  # 4. Quitamos la agrupación por si acaso
+  ungroup() %>%
+
+  # 5. Contamos cuántas veces aparece cada combinación en la base completa
+  count(combinacion, sort = TRUE)
+
+# Visualizamos la tabla resultante
+View(resumen_combinaciones)
