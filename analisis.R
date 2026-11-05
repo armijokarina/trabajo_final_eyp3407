@@ -18,3 +18,36 @@ View(transacciones_complejas)
 ## lO
 
 
+base_etiquetada <- transacciones_dvf %>%
+  group_by(id_mutation) %>%
+  mutate(
+    # Detectamos qué contiene la transacción completa
+    tiene_comercial = any(type_local == "Local industriel. commercial ou assimilé", na.rm = TRUE),
+    tiene_app = any(type_local == "Appartement", na.rm = TRUE),
+    tiene_maison = any(type_local == "Maison", na.rm = TRUE),
+
+    # Asignamos el motivo de exclusión (el orden importa, evalúa de arriba hacia abajo)
+    motivo_exclusion = case_when(
+      tiene_comercial ~ "Eliminado: Contiene local comercial",
+      tiene_app & tiene_maison ~ "Eliminado: Mezcla Appartement + Maison",
+      TRUE ~ "Conservado"
+    )
+  ) %>%
+  ungroup()
+
+# 2. Cuantificar las pérdidas (Guarda esta tabla para tu informe)
+resumen_perdidas <- base_etiquetada %>%
+  group_by(motivo_exclusion) %>%
+  summarise(
+    filas_borradas = n(),
+    transacciones_afectadas = n_distinct(id_mutation)
+  )
+
+print(resumen_perdidas)
+
+# 3. Filtrar la base final y limpiar las columnas auxiliares
+base_limpia <- base_etiquetada %>%
+  filter(motivo_exclusion == "Conservado") %>%
+  # Eliminamos las variables temporales que creamos en el paso 1
+  select(-tiene_comercial, -tiene_app, -tiene_maison, -motivo_exclusion)
+print(base_limpia)
