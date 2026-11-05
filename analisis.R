@@ -51,3 +51,36 @@ base_limpia <- base_etiquetada %>%
   # Eliminamos las variables temporales que creamos en el paso 1
   select(-tiene_comercial, -tiene_app, -tiene_maison, -motivo_exclusion)
 print(base_limpia)
+
+
+
+library(dplyr)
+
+filas_na <- base_limpia %>%
+  filter(is.na(code_type_local))
+
+# Para visualizar el grupo
+View(filas_na)
+
+
+base_etiquetada_na <- base_limpia %>%
+  group_by(id_mutation) %>%
+  mutate(
+    # Evaluamos si TODA la transacción cumple la condición de ser puro NA en tipo y superficie
+    es_terreno_vacio = all(is.na(code_type_local)) & all(is.na(lot1_surface_carrez)),
+
+    # Asignamos una etiqueta
+    estado_filtro = if_else(es_terreno_vacio, "Borrado: Solo NA y sin superficie Carrez", "Conservado")
+  ) %>%
+  ungroup()
+
+# 2. Creamos el conteo de qué se borró y con cuántas transacciones te quedas
+resumen_filtro_na <- base_etiquetada_na %>%
+  group_by(estado_filtro) %>%
+  summarise(
+    total_filas = n(),
+    total_transacciones = n_distinct(id_mutation) # Cuenta los id_mutation únicos
+  )
+
+# Imprimimos la tabla para que la uses en tu informe
+print(resumen_filtro_na)
