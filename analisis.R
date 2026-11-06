@@ -349,7 +349,7 @@ print(diagnostico)
 
 
 
-ids_manuales <- c("2022-1142503", "2021-1153903", "2022-1140688")
+ids_manuales <- c("2022-1142503", "2021-1153903", "2022-1140688","2022-1142506","2022-1143152")
 
 # 2. Filtramos la base para quedarnos solo con los que NO están en esa lista
 df_limpio_final <- df_limpio_prueba %>%
