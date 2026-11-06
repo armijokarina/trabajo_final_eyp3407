@@ -302,6 +302,7 @@ ids_a_borrar <- paso_1 %>%
 # Revisamos cuántas transacciones vamos a eliminar (¡ahora sí debería dar un número mayor a cero!)
 length(ids_a_borrar)
 
+
 df_limpio_prueba <- df_limpio_sin_DEPENDENCIA_NA %>%
   # Retenemos solo las transacciones cuyo ID NO esté en la lista de ids_a_borrar
   filter(!id_mutation %in% ids_a_borrar)
@@ -331,3 +332,25 @@ combinaciones_detalladas <- df_limpio_prueba %>%
 
 # Visualizamos la tabla
 View(combinaciones_detalladas)
+
+#ver posibles valores en lt1_surface_carrez para filas con na en propiedad)
+paso_na <- df_limpio_prueba %>%
+  group_by(id_mutation) %>%
+  # Nos QUEDAMOS solo con las transacciones que tienen al menos un NA
+  filter(any(is.na(code_type_local))) %>%
+  ungroup()
+diagnostico <- paso_na %>%
+  filter(is.na(code_type_local)) %>%
+  count(lot1_surface_carrez)
+
+print(diagnostico)
+
+
+
+
+
+ids_manuales <- c("2022-1142503", "2021-1153903", "2022-1140688")
+
+# 2. Filtramos la base para quedarnos solo con los que NO están en esa lista
+df_limpio_final <- df_limpio_prueba %>%
+  filter(!id_mutation %in% ids_manuales)
