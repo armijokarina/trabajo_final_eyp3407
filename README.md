@@ -1,2 +1,2 @@
-Integrantes:Francisca Sepulveda,Pia Mella,Karina Armijo,Alexander Pinto
+Integrantes:Francisca Sepúlveda, Pia Mella, Karina Armijo, Alexander Pinto
 
