@@ -310,3 +310,65 @@ tabla_resumen_1 <- tibble( paso= 0:11,
 print(tabla_resumen_1)
 View(tabla_resumen_1)
 
+
+###########################
+### Variables Continuas ###
+###########################
+## Librerias
+library(ggplot2)
+library(gridExtra)
+
+## Creamos la variables precio_m2 = valor / superficie habitable (temporal para ver si es consistente con lo que vale)
+df_modelamiento3 <- df_modelamiento2 %>%
+  mutate(precio_m2 = valeur_fonciere / surface_habitable)
+
+
+## 1-. Varibles continuas
+b1 <- ggplot(df_modelamiento3, aes(x= type_local, y = valeur_fonciere, fill = type_local))+
+  geom_boxplot(outlier.colour = "red", outlier.alpha = 0.3)+
+  scale_y_log10(labels = scales::dollar_format(prefix="€", big.mark="."))+
+  theme_minimal()+
+  theme(legend.position = "none")+
+  labs(title="Precio de Venta", y="Euros (escala log10)", x ="")
+
+b2 <- ggplot(df_modelamiento3, aes(x= type_local, y = surface_habitable, fill = type_local))+
+  geom_boxplot(outlier.colour = "red", outlier.alpha = 0.3)+
+  scale_y_log10()+
+  theme_minimal()+
+  theme(legend.position = "none")+
+  labs(title="Superficie habitable", y="Metros cuadrados m^2 (escala log10)", x ="")
+
+b3 <- ggplot(df_modelamiento3, aes(x= type_local, y = precio_m2, fill = type_local))+
+  geom_boxplot(outlier.colour = "red", outlier.alpha = 0.3)+
+  scale_y_log10(labels = scales::dollar_format(prefix="€", big.mark="."))+
+  theme_minimal()+
+  theme(legend.position = "none")+
+  labs(title="Precio por m^2 de Control", y="Euros/m^2 (escala log10)", x ="")
+grid.arrange(b1,b2,b3,ncol=3)
+
+print(b1)
+print(b2)
+print(b3)
+
+##
+
+contar_outliers <- function(x){
+  q1 = quantile(x,0.25,na_rm = TRUE)
+  q3 = quantile(x,0.75,na_rm = TRUE)
+  iqr  = q3 - q1
+  sum(x<(q1-1.5 *iqr) | x > (13+1.5*iqr), na.rm = TRUE)
+}
+
+cat("Outliers estadísticos en Precio:", contar_outliers(df_modelamiento3$valeur_fonciere), "\\n")
+cat("Outliers estadísticos en Superficie Habitable:", contar_outliers(df_modelamiento3$surface_habitable), "\\n")
+cat("Outliers estadísticos en Precio/m²:", contar_outliers(df_modelamiento3$precio_m2), "\\n")
+
+
+cat("1. Precios no comerciales ( < 1.000 €):", sum(df_modelamiento3$valeur_fonciere < 1000, na.rm = TRUE), "\n")
+cat("2. Metros no habitables (< 8 m^2):", sum(df_modelamiento3$surface_habitable < 8, na.rm = TRUE), "\n")
+cat("3. Precios por m² irrisorios (< 150 €/m^2):", sum(df_modelamiento3$precio_m2 < 150, na.rm = TRUE), "\n")
+cat("4. Precios por m² aberrantes (>30.000 €/m^2):", sum(df_modelamiento3$precio_m2 > 30000, na.rm = TRUE), "\n")
+
+
+
+
