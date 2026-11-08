@@ -21,8 +21,6 @@ combinaciones_detalladas <- transacciones_dvf %>%
     combinacion = paste(etiqueta, collapse = " + ")
   ) %>%
   ungroup() %>%
-
-  # 5. Contamos cuántas veces se repite cada combinación final en la base completa
   count(combinacion, sort = TRUE)
 
 # Visualizamos la tabla
@@ -37,21 +35,18 @@ df_sin_duplicados <- transacciones_dvf[!duplicated(transacciones_dvf), ]
 #Borra transacciones que incluyen un local comercial
 df_limpio_sin_comercial <- df_sin_duplicados %>%
   group_by(id_mutation) %>%
-  # Retenemos la transacción completa solo si NINGUNA de sus filas es un local comercial
   filter(!any(type_local == "Local industriel. commercial ou assimilé", na.rm = TRUE)) %>%
   ungroup()
 
 #borra transacciones que incluyen como minimo una casa y un apartamento
 df_limpio_sin_mixtos <- df_limpio_sin_comercial %>%
   group_by(id_mutation) %>%
-  # Retenemos la transacción si NO se cumple que tenga (Maison Y Appartement al mismo tiempo)
   filter(!(any(type_local == "Maison", na.rm = TRUE) & any(type_local == "Appartement", na.rm = TRUE))) %>%
   ungroup()
 
 #borra toda transaccion que incluye al menos dos viviendas(appartament,maison)
 df_limpio_sin_dos_viviendas <- df_limpio_sin_mixtos %>%
   group_by(id_mutation) %>%
-  # Retenemos la transacción si NO se cumple que tenga (2 o más Casas O 2 o más Departamentos)
   filter(!(
     sum(type_local == "Maison", na.rm = TRUE) >= 2 |
       sum(type_local == "Appartement", na.rm = TRUE) >= 2
@@ -132,6 +127,8 @@ ids_manuales <- c("2022-1142503", "2021-1153903", "2022-1140688","2022-1142506",
 # 2. Filtramos la base para quedarnos solo con los que NO están en esa lista
 df_limpio_final <- df_limpio_prueba %>%
   filter(!id_mutation %in% ids_manuales)
+
+
 
 ###########################################################################
 ## TRATAMIENTO DE LAS VARIABLES PARA DEJAR UNA SOLA FILA POR TRANSACCIÓN ##
@@ -243,7 +240,6 @@ print(na_summary, n = 26)
 df_modelamiento1 <- df_modelamiento %>%
   filter(!is.na(valeur_fonciere) & valeur_fonciere > 0)
 
-
 ## SEGUNDA ELIMINACIÓN (REEMPLAZO): los 2 NA en piezas_max
 
 # Paso 2: Imputación condicional por la MEDIA de piezas según type_local (MAR)
@@ -255,3 +251,62 @@ df_modelamiento2 <- df_modelamiento1 %>%
     piezas_sum = ifelse(is.na(piezas_sum), round(mean(piezas_sum, na.rm = TRUE)), piezas_sum)
   ) %>%
   ungroup()
+
+
+#####################
+### Tabla resumen ###
+#####################
+
+#1. Total de datos
+total_datos <- n_distinct(transacciones_dvf$id_mutation)     # Número total de datos
+t1  <- n_distinct(df_limpio$id_mutation)                      # eliminación de duplicados
+t2  <- n_distinct(df_limpio_sin_comercial$id_mutation)        # Eliminación de comerciales
+t3  <- n_distinct(df_limpio_sin_mixtos$id_mutation)           # Eliminación casa-apartamento
+t4  <- n_distinct(df_limpio_sin_dos_viviendas$id_mutation)    # Eliminacion 2o+ residencias por transacción
+t5  <- n_distinct(df_limpio_sin_dependencia$id_mutation)      # Eliminacion solo dependencias
+t6  <- n_distinct(df_limpio_sin_puro_NA$id_mutation)          # Conservala si NO todas sus filas son NA (no hay residencia)
+t7  <- n_distinct(df_limpio_sin_DEPENDENCIA_NA$id_mutation)   # eliminacion dependencia+NA (No hay residencia principal)
+t8  <- n_distinct(df_limpio_prueba$id_mutation)               # Se revisaron NA en type_code, si eran un terreno y luego si tenía algo construido
+t9  <- n_distinct(df_limpio_final$id_mutation)                #
+t10 <- n_distinct(df_modelamiento1$id_mutation)               # Eliminación de NA en valor de la transacción
+t11 <- n_distinct(df_modelamiento2$id_mutation)               # No se eliminó nada, solo se reemplazaron 2 NA de numeros de pieza condicionando ciertas casas y tomando la media.
+#View(transacciones_dvf)
+# Justificación: revisamos los NA vimos que no tenían números de pieza. Si tiene superficie construida como puedo
+# justificar que es una casa o apartamento y no local comercial.
+
+total_FILAS <- nrow(transacciones_dvf)     # Número total de datos
+t_1  <- nrow(df_limpio)                      # eliminación de duplicados
+t_2  <- nrow(df_limpio_sin_comercial)        # Eliminación de comerciales
+t_3  <- nrow(df_limpio_sin_mixtos)           # Eliminación casa-apartamento
+t_4  <- nrow(df_limpio_sin_dos_viviendas)    # Eliminacion 2o+ residencias por transacción
+t_5  <- nrow(df_limpio_sin_dependencia)      # Eliminacion solo dependencias
+t_6  <- nrow(df_limpio_sin_puro_NA)          # Conservala si NO todas sus filas son NA (no hay residencia)
+t_7  <- nrow(df_limpio_sin_DEPENDENCIA_NA)   # eliminacion dependencia+NA (No hay residencia principal)
+t_8  <- nrow(df_limpio_prueba)               # Se revisaron NA en type_code, si eran un terreno y luego si tenía algo construido
+t_9  <- nrow(df_limpio_final)                #
+t_10 <- nrow(df_modelamiento1)               # Eliminación de NA en valor de la transacción
+t_11 <- nrow(df_modelamiento2)
+conteos_tfilas <-c(total_FILAS,t_1,t_2,t_3,t_4,t_5,t_6,t_7,t_8,t_9,t_10,t_11)
+
+tabla_resumen_1 <- tibble( paso= 0:11,
+                           Criterio_de_eliminación = c("Base Original",
+                                                       "Eliminación duplicados",
+                                                       "Eliminación de locales comerciales e industriales",
+                                                       "Eliminación de transaccines mixtas (Maison+Appartement)",
+                                                       "Eliminación ventas en bloque (>=2 residencias)",
+                                                       "Eliminación de transacciones de solo dependencia",
+                                                       "Eliminacion de transacciones con solo NA en tipo local",
+                                                       "Eliminación de combinacion dependecia + NA",
+                                                       "Eliminacion de registros sin tipo y sin cultivo catastral",
+                                                       "Eliminación manual casos atípicos",
+                                                       "Eliminación de datos de transaccion con precio nulo o <=0",
+                                                       "Reemplazo de datos faltantes en cantidad de piezas"),
+                           Número_de_filas = conteos_tfilas,
+                           Transacciones_Conservadas = conteos_t,
+                           Transacciones_Descartadas = c(0,-diff(conteos_t)),
+                           Porcentaje_perdida_paso = c(0, round(100*(-diff(conteos_t))/lag(conteos_t)[-1],2)),
+                           Porcentaje_muestra_inicial= round(100*conteos_t/ total_datos,2)
+)
+print(tabla_resumen_1)
+View(tabla_resumen_1)
+
