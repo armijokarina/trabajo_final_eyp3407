@@ -32,68 +32,14 @@ sum(combinaciones_detalladas$n)
 ##########################################
 ### Eliminamos Todas las duplicaciones####
 ##########################################
-df_limpio <- transacciones_dvf[!duplicated(transacciones_dvf), ]
+df_sin_duplicados <- transacciones_dvf[!duplicated(transacciones_dvf), ]
 
-combinaciones_detalladas <- df_limpio %>%
-  # 1. Para que los espacios vacíos no queden raros, les ponemos un nombre claro
-  mutate(type_local = if_else(is.na(type_local), "Sin Tipo", type_local)) %>%
-
-  # 2. Agrupamos por transacción Y por tipo de local para contar cuántos hay de cada uno
-  group_by(id_mutation, type_local) %>%
-  summarise(cantidad = n(), .groups = "drop") %>%
-
-  # 3. Creamos la etiqueta específica (Ej: "2 Appartement", "1 Maison")
-  mutate(etiqueta = paste(cantidad, type_local)) %>%
-
-  # 4. Volvemos a agrupar solo por transacción para unir todas sus etiquetas
-  group_by(id_mutation) %>%
-  # Ordenamos alfabéticamente para que "A + B" sea igual a "B + A"
-  arrange(type_local, .by_group = TRUE) %>%
-  summarise(
-    combinacion = paste(etiqueta, collapse = " + ")
-  ) %>%
-  ungroup() %>%
-
-  # 5. Contamos cuántas veces se repite cada combinación final en la base completa
-  count(combinacion, sort = TRUE)
-
-# Visualizamos la tabla
-View(combinaciones_detalladas)
-sum(combinaciones_detalladas$n)
-
-
-df_limpio_sin_comercial <- df_limpio %>%
+#Borra transacciones que incluyen un local comercial
+df_limpio_sin_comercial <- df_sin_duplicados %>%
   group_by(id_mutation) %>%
   # Retenemos la transacción completa solo si NINGUNA de sus filas es un local comercial
   filter(!any(type_local == "Local industriel. commercial ou assimilé", na.rm = TRUE)) %>%
   ungroup()
-
-combinaciones_detalladas <- df_limpio_sin_comercial %>%
-  # 1. Para que los espacios vacíos no queden raros, les ponemos un nombre claro
-  mutate(type_local = if_else(is.na(type_local), "Sin Tipo", type_local)) %>%
-
-  # 2. Agrupamos por transacción Y por tipo de local para contar cuántos hay de cada uno
-  group_by(id_mutation, type_local) %>%
-  summarise(cantidad = n(), .groups = "drop") %>%
-
-  # 3. Creamos la etiqueta específica (Ej: "2 Appartement", "1 Maison")
-  mutate(etiqueta = paste(cantidad, type_local)) %>%
-
-  # 4. Volvemos a agrupar solo por transacción para unir todas sus etiquetas
-  group_by(id_mutation) %>%
-  # Ordenamos alfabéticamente para que "A + B" sea igual a "B + A"
-  arrange(type_local, .by_group = TRUE) %>%
-  summarise(
-    combinacion = paste(etiqueta, collapse = " + ")
-  ) %>%
-  ungroup() %>%
-
-  # 5. Contamos cuántas veces se repite cada combinación final en la base completa
-  count(combinacion, sort = TRUE)
-
-# Visualizamos la tabla
-View(combinaciones_detalladas)
-#### Comentario oooo
 
 #borra transacciones que incluyen como minimo una casa y un apartamento
 df_limpio_sin_mixtos <- df_limpio_sin_comercial %>%
@@ -101,32 +47,6 @@ df_limpio_sin_mixtos <- df_limpio_sin_comercial %>%
   # Retenemos la transacción si NO se cumple que tenga (Maison Y Appartement al mismo tiempo)
   filter(!(any(type_local == "Maison", na.rm = TRUE) & any(type_local == "Appartement", na.rm = TRUE))) %>%
   ungroup()
-
-combinaciones_detalladas <- df_limpio_sin_mixtos %>%
-  # 1. Para que los espacios vacíos no queden raros, les ponemos un nombre claro
-  mutate(type_local = if_else(is.na(type_local), "Sin Tipo", type_local)) %>%
-
-  # 2. Agrupamos por transacción Y por tipo de local para contar cuántos hay de cada uno
-  group_by(id_mutation, type_local) %>%
-  summarise(cantidad = n(), .groups = "drop") %>%
-
-  # 3. Creamos la etiqueta específica (Ej: "2 Appartement", "1 Maison")
-  mutate(etiqueta = paste(cantidad, type_local)) %>%
-
-  # 4. Volvemos a agrupar solo por transacción para unir todas sus etiquetas
-  group_by(id_mutation) %>%
-  # Ordenamos alfabéticamente para que "A + B" sea igual a "B + A"
-  arrange(type_local, .by_group = TRUE) %>%
-  summarise(
-    combinacion = paste(etiqueta, collapse = " + ")
-  ) %>%
-  ungroup() %>%
-
-  # 5. Contamos cuántas veces se repite cada combinación final en la base completa
-  count(combinacion, sort = TRUE)
-
-# Visualizamos la tabla
-View(combinaciones_detalladas)
 
 #borra toda transaccion que incluye al menos dos viviendas(appartament,maison)
 df_limpio_sin_dos_viviendas <- df_limpio_sin_mixtos %>%
@@ -138,31 +58,6 @@ df_limpio_sin_dos_viviendas <- df_limpio_sin_mixtos %>%
   )) %>%
   ungroup()
 
-combinaciones_detalladas <- df_limpio_sin_dos_viviendas %>%
-  # 1. Para que los espacios vacíos no queden raros, les ponemos un nombre claro
-  mutate(type_local = if_else(is.na(type_local), "Sin Tipo", type_local)) %>%
-
-  # 2. Agrupamos por transacción Y por tipo de local para contar cuántos hay de cada uno
-  group_by(id_mutation, type_local) %>%
-  summarise(cantidad = n(), .groups = "drop") %>%
-
-  # 3. Creamos la etiqueta específica (Ej: "2 Appartement", "1 Maison")
-  mutate(etiqueta = paste(cantidad, type_local)) %>%
-
-  # 4. Volvemos a agrupar solo por transacción para unir todas sus etiquetas
-  group_by(id_mutation) %>%
-  # Ordenamos alfabéticamente para que "A + B" sea igual a "B + A"
-  arrange(type_local, .by_group = TRUE) %>%
-  summarise(
-    combinacion = paste(etiqueta, collapse = " + ")
-  ) %>%
-  ungroup() %>%
-
-  # 5. Contamos cuántas veces se repite cada combinación final en la base completa
-  count(combinacion, sort = TRUE)
-
-# Visualizamos la tabla
-View(combinaciones_detalladas)
 
 #elimina transacciones que solo consideran dependencias
 df_limpio_sin_dependencia <- df_limpio_sin_dos_viviendas %>%
@@ -171,65 +66,12 @@ df_limpio_sin_dependencia <- df_limpio_sin_dos_viviendas %>%
   filter(!all(type_local == "Dépendance", na.rm = TRUE)) %>%
   ungroup()
 
-combinaciones_detalladas <- df_limpio_sin_dependencia %>%
-  # 1. Para que los espacios vacíos no queden raros, les ponemos un nombre claro
-  mutate(type_local = if_else(is.na(type_local), "Sin Tipo", type_local)) %>%
-
-  # 2. Agrupamos por transacción Y por tipo de local para contar cuántos hay de cada uno
-  group_by(id_mutation, type_local) %>%
-  summarise(cantidad = n(), .groups = "drop") %>%
-
-  # 3. Creamos la etiqueta específica (Ej: "2 Appartement", "1 Maison")
-  mutate(etiqueta = paste(cantidad, type_local)) %>%
-
-  # 4. Volvemos a agrupar solo por transacción para unir todas sus etiquetas
-  group_by(id_mutation) %>%
-  # Ordenamos alfabéticamente para que "A + B" sea igual a "B + A"
-  arrange(type_local, .by_group = TRUE) %>%
-  summarise(
-    combinacion = paste(etiqueta, collapse = " + ")
-  ) %>%
-  ungroup() %>%
-
-  # 5. Contamos cuántas veces se repite cada combinación final en la base completa
-  count(combinacion, sort = TRUE)
-
-# Visualizamos la tabla
-View(combinaciones_detalladas)
-
-
-
+#Elimina transacciones que incluyan unicamente NA en tipo de propiedad
 df_limpio_sin_puro_NA <- df_limpio_sin_dependencia %>%
   group_by(id_mutation) %>%
   # Conservamos la transacción si NO ocurre que todas sus filas sean NA en code_type_local
   filter(!all(is.na(code_type_local))) %>%
   ungroup()
-
-combinaciones_detalladas <- df_limpio_sin_puro_NA %>%
-  # 1. Para que los espacios vacíos no queden raros, les ponemos un nombre claro
-  mutate(type_local = if_else(is.na(type_local), "Sin Tipo", type_local)) %>%
-
-  # 2. Agrupamos por transacción Y por tipo de local para contar cuántos hay de cada uno
-  group_by(id_mutation, type_local) %>%
-  summarise(cantidad = n(), .groups = "drop") %>%
-
-  # 3. Creamos la etiqueta específica (Ej: "2 Appartement", "1 Maison")
-  mutate(etiqueta = paste(cantidad, type_local)) %>%
-
-  # 4. Volvemos a agrupar solo por transacción para unir todas sus etiquetas
-  group_by(id_mutation) %>%
-  # Ordenamos alfabéticamente para que "A + B" sea igual a "B + A"
-  arrange(type_local, .by_group = TRUE) %>%
-  summarise(
-    combinacion = paste(etiqueta, collapse = " + ")
-  ) %>%
-  ungroup() %>%
-
-  # 5. Contamos cuántas veces se repite cada combinación final en la base completa
-  count(combinacion, sort = TRUE)
-
-# Visualizamos la tabla
-View(combinaciones_detalladas)
 
 
 #borra toda transaccion compuesta unicamente por dependencia Y NA
@@ -238,34 +80,6 @@ df_limpio_sin_DEPENDENCIA_NA <- df_limpio_sin_puro_NA %>%
   # Conservamos la transacción si NO ocurre que todas sus filas sean (NA o Dépendance)
   filter(!all(is.na(code_type_local) | type_local == "Dépendance")) %>%
   ungroup()
-
-
-
-combinaciones_detalladas <- df_limpio_sin_DEPENDENCIA_NA %>%
-  # 1. Para que los espacios vacíos no queden raros, les ponemos un nombre claro
-  mutate(type_local = if_else(is.na(type_local), "Sin Tipo", type_local)) %>%
-
-  # 2. Agrupamos por transacción Y por tipo de local para contar cuántos hay de cada uno
-  group_by(id_mutation, type_local) %>%
-  summarise(cantidad = n(), .groups = "drop") %>%
-
-  # 3. Creamos la etiqueta específica (Ej: "2 Appartement", "1 Maison")
-  mutate(etiqueta = paste(cantidad, type_local)) %>%
-
-  # 4. Volvemos a agrupar solo por transacción para unir todas sus etiquetas
-  group_by(id_mutation) %>%
-  # Ordenamos alfabéticamente para que "A + B" sea igual a "B + A"
-  arrange(type_local, .by_group = TRUE) %>%
-  summarise(
-    combinacion = paste(etiqueta, collapse = " + ")
-  ) %>%
-  ungroup() %>%
-
-  # 5. Contamos cuántas veces se repite cada combinación final en la base completa
-  count(combinacion, sort = TRUE)
-
-# Visualizamos la tabla
-View(combinaciones_detalladas)
 
 
 #borrar toda transaccion que incluya al menos un NA Y tenga
@@ -279,8 +93,6 @@ paso_1 <- df_limpio_sin_DEPENDENCIA_NA %>%
 diagnostico <- paso_1 %>%
   filter(is.na(code_type_local)) %>%
   count(code_nature_culture)
-
-print(diagnostico)
 
 
 ids_a_borrar <- paso_1 %>%
@@ -299,39 +111,13 @@ ids_a_borrar <- paso_1 %>%
   # 5. Extraemos los ID a una lista
   pull(id_mutation)
 
-# Revisamos cuántas transacciones vamos a eliminar (¡ahora sí debería dar un número mayor a cero!)
-length(ids_a_borrar)
+
 
 
 df_limpio_prueba <- df_limpio_sin_DEPENDENCIA_NA %>%
   # Retenemos solo las transacciones cuyo ID NO esté en la lista de ids_a_borrar
   filter(!id_mutation %in% ids_a_borrar)
 
-combinaciones_detalladas <- df_limpio_prueba %>%
-  # 1. Para que los espacios vacíos no queden raros, les ponemos un nombre claro
-  mutate(type_local = if_else(is.na(type_local), "Sin Tipo", type_local)) %>%
-
-  # 2. Agrupamos por transacción Y por tipo de local para contar cuántos hay de cada uno
-  group_by(id_mutation, type_local) %>%
-  summarise(cantidad = n(), .groups = "drop") %>%
-
-  # 3. Creamos la etiqueta específica (Ej: "2 Appartement", "1 Maison")
-  mutate(etiqueta = paste(cantidad, type_local)) %>%
-
-  # 4. Volvemos a agrupar solo por transacción para unir todas sus etiquetas
-  group_by(id_mutation) %>%
-  # Ordenamos alfabéticamente para que "A + B" sea igual a "B + A"
-  arrange(type_local, .by_group = TRUE) %>%
-  summarise(
-    combinacion = paste(etiqueta, collapse = " + ")
-  ) %>%
-  ungroup() %>%
-
-  # 5. Contamos cuántas veces se repite cada combinación final en la base completa
-  count(combinacion, sort = TRUE)
-
-# Visualizamos la tabla
-View(combinaciones_detalladas)
 
 #ver posibles valores en lt1_surface_carrez para filas con na en propiedad)
 paso_na <- df_limpio_prueba %>%
@@ -339,11 +125,6 @@ paso_na <- df_limpio_prueba %>%
   # Nos QUEDAMOS solo con las transacciones que tienen al menos un NA
   filter(any(is.na(code_type_local))) %>%
   ungroup()
-diagnostico <- paso_na %>%
-  filter(is.na(code_type_local)) %>%
-  count(lot1_surface_carrez)
-
-print(diagnostico)
 
 
 ids_manuales <- c("2022-1142503", "2021-1153903", "2022-1140688","2022-1142506","2022-1143152")
