@@ -374,3 +374,50 @@ cat("4. Precios por m² aberrantes (>30.000 €/m^2):", sum(df_modelamiento3$pre
 
 
 
+
+#############################
+### Casos Outliers a mano ###
+#############################
+# No podemos eliminar la 50000 seguin la regla de los quantiles,
+# por lo que lo revisaremos a manos casos que pueden ser extremos si en realidad si son extremos
+# en uno de los docimentos que no se considera las casa menores a 8 m^2, aunque los revisé
+# View(df_modelamiento3)
+
+
+precios_altos_m2<-df_modelamiento3 %>%
+  filter(precio_m2 == Inf) %>%
+  select(id_mutation,nom_commune,nature_mutation, type_local, valeur_fonciere, surface_habitable,surface_terrain_total, precio_m2) %>%
+  arrange(desc(precio_m2))
+
+
+precios_superface<-df_modelamiento3 %>%
+  filter(surface_habitable < 8) %>%
+  select(id_mutation,nom_commune, type_local, valeur_fonciere, surface_habitable, precio_m2) %>%
+  arrange(surface_habitable)
+
+
+precios_bajos <- df_modelamiento3 %>%
+  mutate(precio_m2=round(valeur_fonciere/surface_habitable,1)) %>%
+  filter((surface_habitable >= 80 & valeur_fonciere <50000) | (precio_m2 < 150 & surface_habitable > 0)) %>%
+  select(id_mutation, date_mutation, nom_commune, type_local,
+         nature_mutation, valeur_fonciere, surface_habitable,
+         precio_m2, surface_terrain_total, n_dependances,
+         any_of(c("nombre_pieces_principales", "piezas_max")) )%>%
+  arrange(precio_m2)
+
+
+View(precios_superface)
+
+
+
+
+
+###############################
+### Base final para modelos ###
+###############################
+
+df_modelamiento_final <- df_modelamiento3 %>%
+  filter(surface_habitable >= 8,) %>%
+  mutate(log_valeur_fonciere = log(valeur_fonciere))
+nrow(df_modelamiento_final)
+
