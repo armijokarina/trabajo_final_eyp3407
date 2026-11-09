@@ -423,12 +423,11 @@ nrow(df_modelamiento_final)
 #dejar solo transacciones que son consideradas venta
 df_modelamiento_final_final <- df_modelamiento_final %>%
   filter(nature_mutation == "Vente")
-#eliminar transacciones con un valor menor a 1000 euros
-df_modelamiento_final_final_final <- df_modelamiento_final_final%>%
-  filter(valeur_fonciere>= 1000,)
+
 #eliminar transacciones que tienen el valor del m2 <1000
-df_modelamiento_listo <- df_modelamiento_final_final_final%>%
+df_modelamiento_listo <- df_modelamiento_final_final%>%
   filter(precio_m2 > 1000,)
+
 #####################
 ### Tabla resumen ###
 #####################
@@ -448,9 +447,8 @@ t10 <- n_distinct(df_modelamiento1$id_mutation)               # Eliminación de 
 t11 <- n_distinct(df_modelamiento2$id_mutation)               # No se eliminó nada, solo se reemplazaron 2 NA de numeros de pieza condicionando ciertas casas y tomando la media.
 t12 <- n_distinct(df_modelamiento_final$id_mutation)         # Eliminación superficies < 8 m2
 t13 <- n_distinct(df_modelamiento_final_final$id_mutation)   # Eliminación todo excepto "Vente"
-t14 <- n_distinct(df_modelamiento_final_final_final$id_mutation) #  Precios >= 1000
-t15 <- n_distinct(df_modelamiento_listo)                      # Eliminacion m2<1000
-conteos_t <- c(total_datos, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15)
+t14 <- n_distinct(df_modelamiento_listo)                      # Eliminacion m2<1000
+conteos_t <- c(total_datos, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14)
 
 #View(transacciones_dvf)
 # Justificación: revisamos los NA vimos que no tenían números de pieza. Si tiene superficie construida como puedo
@@ -470,9 +468,8 @@ t_10 <- nrow(df_modelamiento1)               # Eliminación de NA en valor de la
 t_11 <- nrow(df_modelamiento2)
 t_12 <- nrow(df_modelamiento_final)        # Eliminación superficies < 8 m2
 t_13 <- nrow(df_modelamiento_final_final)  # Eliminación todo excepto "Vente"
-t_14 <- nrow(df_modelamiento_final_final_final) #  Precios >= 1000
-t_15 <- nrow(df_modelamiento_listo) # eliminacion m2 <1000
-conteos_tfilas <-c(total_FILAS,t_1,t_2,t_3,t_4,t_5,t_6,t_7,t_8,t_9,t_10,t_11, t_12, t_13, t_14, t_15)
+t_14 <- nrow(df_modelamiento_listo) # eliminacion m2 <1000
+conteos_tfilas <-c(total_FILAS,t_1,t_2,t_3,t_4,t_5,t_6,t_7,t_8,t_9,t_10,t_11, t_12, t_13, t_14)
 
 tabla_resumen_1 <- tibble( paso= 0:14,
                            Criterio_de_eliminación = c("Base Original",
@@ -489,7 +486,6 @@ tabla_resumen_1 <- tibble( paso= 0:14,
                                                        "Reemplazo de datos faltantes en cantidad de piezas",
                                                        "Eliminación superficies < 8 m2",
                                                        "Eliminación todo excepto Vente",
-                                                       "Eliminación de precios bajos (< 1000 €)",
                                                        "Eliminación de precios de M**2 < 1000 €"),
                            Número_de_filas = conteos_tfilas,
                            Transacciones_Conservadas = conteos_t,
