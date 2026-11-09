@@ -420,4 +420,6 @@ df_modelamiento_final <- df_modelamiento3 %>%
   filter(surface_habitable >= 8,) %>%
   mutate(log_valeur_fonciere = log(valeur_fonciere))
 nrow(df_modelamiento_final)
+df_modelamiento_final_final <- df_modelamiento_final %>%
+  filter(nature_mutation == "Vente")
 
