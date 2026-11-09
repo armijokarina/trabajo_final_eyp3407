@@ -259,7 +259,7 @@ df_modelamiento2 <- df_modelamiento1 %>%
 
 #1. Total de datos
 total_datos <- n_distinct(transacciones_dvf$id_mutation)     # Número total de datos
-t1  <- n_distinct(df_limpio$id_mutation)                      # eliminación de duplicados
+t1  <- n_distinct(df_sin_duplicados$id_mutation)                      # eliminación de duplicados
 t2  <- n_distinct(df_limpio_sin_comercial$id_mutation)        # Eliminación de comerciales
 t3  <- n_distinct(df_limpio_sin_mixtos$id_mutation)           # Eliminación casa-apartamento
 t4  <- n_distinct(df_limpio_sin_dos_viviendas$id_mutation)    # Eliminacion 2o+ residencias por transacción
@@ -270,12 +270,14 @@ t8  <- n_distinct(df_limpio_prueba$id_mutation)               # Se revisaron NA 
 t9  <- n_distinct(df_limpio_final$id_mutation)                #
 t10 <- n_distinct(df_modelamiento1$id_mutation)               # Eliminación de NA en valor de la transacción
 t11 <- n_distinct(df_modelamiento2$id_mutation)               # No se eliminó nada, solo se reemplazaron 2 NA de numeros de pieza condicionando ciertas casas y tomando la media.
+conteos_t <-c(total_datos,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11)
+
 #View(transacciones_dvf)
 # Justificación: revisamos los NA vimos que no tenían números de pieza. Si tiene superficie construida como puedo
 # justificar que es una casa o apartamento y no local comercial.
 
 total_FILAS <- nrow(transacciones_dvf)     # Número total de datos
-t_1  <- nrow(df_limpio)                      # eliminación de duplicados
+t_1  <- nrow(df_sin_duplicados)                      # eliminación de duplicados
 t_2  <- nrow(df_limpio_sin_comercial)        # Eliminación de comerciales
 t_3  <- nrow(df_limpio_sin_mixtos)           # Eliminación casa-apartamento
 t_4  <- nrow(df_limpio_sin_dos_viviendas)    # Eliminacion 2o+ residencias por transacción
