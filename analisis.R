@@ -502,8 +502,8 @@ df_modelamiento_final_final_final$año <- substr(df_modelamiento_final_final_fin
 df_desarrollo <- df_modelamiento_final_final_final %>%
   filter(año %in% c(2021, 2022)) %>%
   select(
-    id_mutation,               # Mantenemos la clave íntegra
-    log_valeur_fonciere,       # Variable Y
+    id_mutation,
+    log_valeur_fonciere,
     type_local, surface_habitable, piezas_max, n_dependances,
     surface_terrain_total, n_parcelles, nombre_lots_max,
     has_jardin, has_sol, has_pres, has_terres, has_verger, has_terreno_unspecified
@@ -512,7 +512,7 @@ df_desarrollo <- df_modelamiento_final_final_final %>%
 df_reserva <- df_modelamiento_final_final_final %>%
   filter(año == 2023) %>%
   select(
-    id_mutation,               # Mantenemos la clave íntegra
+    id_mutation,
     log_valeur_fonciere,
     type_local, surface_habitable, piezas_max, n_dependances,
     surface_terrain_total, n_parcelles, nombre_lots_max,
