@@ -420,6 +420,79 @@ df_modelamiento_final <- df_modelamiento3 %>%
   filter(surface_habitable >= 8,) %>%
   mutate(log_valeur_fonciere = log(valeur_fonciere))
 nrow(df_modelamiento_final)
+#dejar solo transacciones que son consideradas venta
 df_modelamiento_final_final <- df_modelamiento_final %>%
   filter(nature_mutation == "Vente")
+#eliminar transacciones con un valor menor a 1000 euros
+df_modelamiento_final_final_final <- df_modelamiento_final_final%>%
+  filter(valeur_fonciere>= 1000,)
 
+#####################
+### Tabla resumen ###
+#####################
+
+#1. Total de datos
+total_datos <- n_distinct(transacciones_dvf$id_mutation)     # Número total de datos
+t1  <- n_distinct(df_sin_duplicados$id_mutation)              # eliminación de duplicados
+t2  <- n_distinct(df_limpio_sin_comercial$id_mutation)        # Eliminación de comerciales
+t3  <- n_distinct(df_limpio_sin_mixtos$id_mutation)           # Eliminación casa-apartamento
+t4  <- n_distinct(df_limpio_sin_dos_viviendas$id_mutation)    # Eliminacion 2o+ residencias por transacción
+t5  <- n_distinct(df_limpio_sin_dependencia$id_mutation)      # Eliminacion solo dependencias
+t6  <- n_distinct(df_limpio_sin_puro_NA$id_mutation)          # Conservala si NO todas sus filas son NA (no hay residencia)
+t7  <- n_distinct(df_limpio_sin_DEPENDENCIA_NA$id_mutation)   # eliminacion dependencia+NA (No hay residencia principal)
+t8  <- n_distinct(df_limpio_prueba$id_mutation)               # Se revisaron NA en type_code, si eran un terreno y luego si tenía algo construido
+t9  <- n_distinct(df_limpio_final$id_mutation)                #
+t10 <- n_distinct(df_modelamiento1$id_mutation)               # Eliminación de NA en valor de la transacción
+t11 <- n_distinct(df_modelamiento2$id_mutation)               # No se eliminó nada, solo se reemplazaron 2 NA de numeros de pieza condicionando ciertas casas y tomando la media.
+t12 <- n_distinct(df_modelamiento_final$id_mutation)         # Eliminación superficies < 8 m2
+t13 <- n_distinct(df_modelamiento_final_final$id_mutation)   # Eliminación todo excepto "Vente"
+t14 <- n_distinct(df_modelamiento_final_final_final$id_mutation) #  Precios >= 1000
+conteos_t <- c(total_datos, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14)
+
+#View(transacciones_dvf)
+# Justificación: revisamos los NA vimos que no tenían números de pieza. Si tiene superficie construida como puedo
+# justificar que es una casa o apartamento y no local comercial.
+
+total_FILAS <- nrow(transacciones_dvf)     # Número total de datos
+t_1  <- nrow(df_sin_duplicados)                      # eliminación de duplicados
+t_2  <- nrow(df_limpio_sin_comercial)        # Eliminación de comerciales
+t_3  <- nrow(df_limpio_sin_mixtos)           # Eliminación casa-apartamento
+t_4  <- nrow(df_limpio_sin_dos_viviendas)    # Eliminacion 2o+ residencias por transacción
+t_5  <- nrow(df_limpio_sin_dependencia)      # Eliminacion solo dependencias
+t_6  <- nrow(df_limpio_sin_puro_NA)          # Conservala si NO todas sus filas son NA (no hay residencia)
+t_7  <- nrow(df_limpio_sin_DEPENDENCIA_NA)   # eliminacion dependencia+NA (No hay residencia principal)
+t_8  <- nrow(df_limpio_prueba)               # Se revisaron NA en type_code, si eran un terreno y luego si tenía algo construido
+t_9  <- nrow(df_limpio_final)                #
+t_10 <- nrow(df_modelamiento1)               # Eliminación de NA en valor de la transacción
+t_11 <- nrow(df_modelamiento2)
+t_12 <- nrow(df_modelamiento_final)        # Eliminación superficies < 8 m2
+t_13 <- nrow(df_modelamiento_final_final)  # Eliminación todo excepto "Vente"
+t_14 <- nrow(df_modelamiento_final_final_final) #  Precios >= 1000
+conteos_tfilas <-c(total_FILAS,t_1,t_2,t_3,t_4,t_5,t_6,t_7,t_8,t_9,t_10,t_11, t_12, t_13, t_14)
+
+tabla_resumen_1 <- tibble( paso= 0:14,
+                           Criterio_de_eliminación = c("Base Original",
+                                                       "Eliminación duplicados",
+                                                       "Eliminación de locales comerciales e industriales",
+                                                       "Eliminación de transaccines mixtas (Maison+Appartement)",
+                                                       "Eliminación ventas en bloque (>=2 residencias)",
+                                                       "Eliminación de transacciones de solo dependencia",
+                                                       "Eliminacion de transacciones con solo NA en tipo local",
+                                                       "Eliminación de combinacion dependecia + NA",
+                                                       "Eliminacion de registros sin tipo y sin cultivo catastral",
+                                                       "Eliminación manual casos atípicos",
+                                                       "Eliminación de datos de transaccion con precio nulo o <=0",
+                                                       "Reemplazo de datos faltantes en cantidad de piezas",
+                                                       "Eliminación superficies < 8 m2",
+                                                       "Eliminación todo excepto Vente",
+                                                       "Eliminación de precios anormalmente bajos (< 1000 €)"),
+                           Número_de_filas = conteos_tfilas,
+                           Transacciones_Conservadas = conteos_t,
+                           Transacciones_Descartadas = c(0,-diff(conteos_t)),
+                           Porcentaje_perdida_paso = c(0, round(100*(-diff(conteos_t))/lag(conteos_t)[-1],2)),
+                           Porcentaje_muestra_inicial= round(100*conteos_t/ total_datos,2)
+)
+print(tabla_resumen_1)
+View(tabla_resumen_1)
+
+library(glmnet)
