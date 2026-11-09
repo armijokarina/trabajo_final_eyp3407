@@ -368,7 +368,7 @@ cat("Outliers estadísticos en Precio/m²:", contar_outliers(df_modelamiento3$pr
 
 cat("1. Precios no comerciales ( < 1.000 €):", sum(df_modelamiento3$valeur_fonciere < 1000, na.rm = TRUE), "\n")
 cat("2. Metros no habitables (< 8 m^2):", sum(df_modelamiento3$surface_habitable < 8, na.rm = TRUE), "\n")
-cat("3. Precios por m² irrisorios (< 150 €/m^2):", sum(df_modelamiento3$precio_m2 < 150, na.rm = TRUE), "\n")
+cat("3. Precios por m² irrisorios (< 150 €/m^2):", sum(df_modelamiento_final_final_final$precio_m2 < 1000, na.rm = TRUE), "\n")
 cat("4. Precios por m² aberrantes (>30.000 €/m^2):", sum(df_modelamiento3$precio_m2 > 30000, na.rm = TRUE), "\n")
 
 
@@ -426,7 +426,9 @@ df_modelamiento_final_final <- df_modelamiento_final %>%
 #eliminar transacciones con un valor menor a 1000 euros
 df_modelamiento_final_final_final <- df_modelamiento_final_final%>%
   filter(valeur_fonciere>= 1000,)
-
+#eliminar transacciones que tienen el valor del m2 <1000
+df_modelamiento_listo <- df_modelamiento_final_final_final%>%
+  filter(precio_m2 > 1000,)
 #####################
 ### Tabla resumen ###
 #####################
@@ -447,7 +449,8 @@ t11 <- n_distinct(df_modelamiento2$id_mutation)               # No se eliminó n
 t12 <- n_distinct(df_modelamiento_final$id_mutation)         # Eliminación superficies < 8 m2
 t13 <- n_distinct(df_modelamiento_final_final$id_mutation)   # Eliminación todo excepto "Vente"
 t14 <- n_distinct(df_modelamiento_final_final_final$id_mutation) #  Precios >= 1000
-conteos_t <- c(total_datos, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14)
+t15 <- n_distinct(df_modelamiento_listo)                      # Eliminacion m2<1000
+conteos_t <- c(total_datos, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15)
 
 #View(transacciones_dvf)
 # Justificación: revisamos los NA vimos que no tenían números de pieza. Si tiene superficie construida como puedo
@@ -468,7 +471,8 @@ t_11 <- nrow(df_modelamiento2)
 t_12 <- nrow(df_modelamiento_final)        # Eliminación superficies < 8 m2
 t_13 <- nrow(df_modelamiento_final_final)  # Eliminación todo excepto "Vente"
 t_14 <- nrow(df_modelamiento_final_final_final) #  Precios >= 1000
-conteos_tfilas <-c(total_FILAS,t_1,t_2,t_3,t_4,t_5,t_6,t_7,t_8,t_9,t_10,t_11, t_12, t_13, t_14)
+t_15 <- nrow(df_modelamiento_listo) # eliminacion m2 <1000
+conteos_tfilas <-c(total_FILAS,t_1,t_2,t_3,t_4,t_5,t_6,t_7,t_8,t_9,t_10,t_11, t_12, t_13, t_14, t_15)
 
 tabla_resumen_1 <- tibble( paso= 0:14,
                            Criterio_de_eliminación = c("Base Original",
@@ -485,7 +489,8 @@ tabla_resumen_1 <- tibble( paso= 0:14,
                                                        "Reemplazo de datos faltantes en cantidad de piezas",
                                                        "Eliminación superficies < 8 m2",
                                                        "Eliminación todo excepto Vente",
-                                                       "Eliminación de precios anormalmente bajos (< 1000 €)"),
+                                                       "Eliminación de precios bajos (< 1000 €)",
+                                                       "Eliminación de precios de M**2 < 1000 €"),
                            Número_de_filas = conteos_tfilas,
                            Transacciones_Conservadas = conteos_t,
                            Transacciones_Descartadas = c(0,-diff(conteos_t)),
@@ -518,3 +523,106 @@ df_reserva <- df_modelamiento_final_final_final %>%
     surface_terrain_total, n_parcelles, nombre_lots_max,
     has_jardin, has_sol, has_pres, has_terres, has_verger, has_terreno_unspecified
   )
+
+
+set.seed(4554)
+indices_entrenamiento <- sample(1:nrow(df_desarrollo), size = 0.8 * nrow(df_desarrollo))
+df_entrenamiento <- df_desarrollo[indices_entrenamiento, ]
+df_validacion    <- df_desarrollo[-indices_entrenamiento, ]
+
+x_entrenamiento <- model.matrix(log_valeur_fonciere ~ . - id_mutation, data = df_entrenamiento)[, -1]
+y_entrenamiento <- df_entrenamiento$log_valeur_fonciere
+
+x_validacion <- model.matrix(log_valeur_fonciere ~ . - id_mutation, data = df_validacion)[, -1]
+y_validacion <- df_validacion$log_valeur_fonciere
+
+x_reserva <- model.matrix(log_valeur_fonciere ~ . - id_mutation, data = df_reserva)[, -1]
+y_reserva <- df_reserva$log_valeur_fonciere
+
+modelo_lasso_cv <- cv.glmnet(x_entrenamiento, y_entrenamiento, alpha = 1, standardize = TRUE)
+mejor_lambda <- modelo_lasso_cv$lambda.min
+print(mejor_lambda)
+
+predicciones_validacion <- predict(modelo_lasso_cv, s = mejor_lambda, newx = x_validacion)
+
+df_resultados_validacion <- df_validacion %>%
+  select(id_mutation, log_valeur_fonciere) %>%
+  mutate(
+    prediccion_log = as.vector(predicciones_validacion),
+    precio_real_euros = exp(log_valeur_fonciere),
+    precio_predicho_euros = exp(prediccion_log)
+  )
+
+predicciones_reserva <- predict(modelo_lasso_cv, s = mejor_lambda, newx = x_reserva)
+
+df_resultados_reserva <- df_reserva %>%
+  select(id_mutation, log_valeur_fonciere) %>%
+  mutate(
+    prediccion_log = as.vector(predicciones_reserva),
+    precio_real_euros = exp(log_valeur_fonciere),
+    precio_predicho_euros = exp(prediccion_log)
+  )
+
+
+# 1. Función para calcular las métricas de evaluación
+calcular_metricas <- function(real, predicho) {
+  # Suma de cuadrados de los residuos (RSS)
+  rss <- sum((real - predicho)^2)
+  # Suma total de cuadrados (TSS)
+  tss <- sum((real - mean(real))^2)
+
+  # Fórmulas matemáticas
+  r2 <- 1 - (rss / tss)
+  rmse <- sqrt(mean((real - predicho)^2))
+
+  return(c(R2 = round(r2, 4), RMSE = round(rmse, 4)))
+}
+
+# 2. Calcular las métricas en la base de VALIDACIÓN (escala log)
+metricas_validacion <- calcular_metricas(
+  real = df_resultados_validacion$log_valeur_fonciere,
+  predicho = df_resultados_validacion$prediccion_log
+)
+
+# 3. Calcular las métricas en la base de RESERVA (escala log)
+metricas_reserva <- calcular_metricas(
+  real = df_resultados_reserva$log_valeur_fonciere,
+  predicho = df_resultados_reserva$prediccion_log
+)
+
+# 4. Unir todo en una tabla comparativa para visualizar
+tabla_comparativa <- bind_rows(
+  data.frame(Conjunto = "Validación (2021-2022)", R2 = metricas_validacion["R2"], RMSE = metricas_validacion["RMSE"]),
+  data.frame(Conjunto = "Reserva (2023)", R2 = metricas_reserva["R2"], RMSE = metricas_reserva["RMSE"])
+)
+
+print(tabla_comparativa)
+
+
+df_evaluacion <- df_resultados_reserva %>%
+  left_join(
+    df_modelamiento_final_final_final %>%
+      select(id_mutation, code_departement, nom_commune, type_local),
+    by = "id_mutation"
+  ) %>%
+  mutate(error_abs_euros = abs(precio_real_euros - precio_predicho_euros))
+
+# 2. MAE y RMSE Global en Euros
+metricas_globales_euros <- df_evaluacion %>%
+  summarise(
+    MAE_Euros = mean(error_abs_euros),
+    RMSE_Euros = sqrt(mean((precio_real_euros - precio_predicho_euros)^2)),
+    Mediana_Error_Euros = median(error_abs_euros) # Agregada porque el RMSE se infla con valores altos
+  )
+print(metricas_globales_euros)
+
+
+errores_tipo <- df_evaluacion %>%
+  group_by(type_local) %>%
+  summarise(
+    N_Transacciones = n(),
+    MAE_Euros = mean(error_abs_euros),
+    RMSE_Euros = sqrt(mean((precio_real_euros - precio_predicho_euros)^2))
+  )
+print("=== ERRORES POR TIPO DE VIVIENDA ===")
+print(errores_tipo)
