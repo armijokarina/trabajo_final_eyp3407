@@ -368,7 +368,7 @@ cat("Outliers estadísticos en Precio/m²:", contar_outliers(df_modelamiento3$pr
 
 cat("1. Precios no comerciales ( < 1.000 €):", sum(df_modelamiento3$valeur_fonciere < 1000, na.rm = TRUE), "\n")
 cat("2. Metros no habitables (< 8 m^2):", sum(df_modelamiento3$surface_habitable < 8, na.rm = TRUE), "\n")
-cat("3. Precios por m² irrisorios (< 150 €/m^2):", sum(df_modelamiento_final_final_final$precio_m2 < 1000, na.rm = TRUE), "\n")
+cat("3. Precios por m² irrisorios (< 150 €/m^2):", sum(df_modelamiento3$precio_m2 < 1000, na.rm = TRUE), "\n")
 cat("4. Precios por m² aberrantes (>30.000 €/m^2):", sum(df_modelamiento3$precio_m2 > 30000, na.rm = TRUE), "\n")
 
 
@@ -498,9 +498,9 @@ View(tabla_resumen_1)
 
 library(glmnet)
 
-df_modelamiento_final_final_final$año <- substr(df_modelamiento_final_final_final$date_mutation, 1, 4)
+df_modelamiento_listo$año <- substr(df_modelamiento_listo$date_mutation, 1, 4)
 
-df_desarrollo <- df_modelamiento_final_final_final %>%
+df_desarrollo <- df_modelamiento_listo %>%
   filter(año %in% c(2021, 2022)) %>%
   select(
     id_mutation,
@@ -510,7 +510,7 @@ df_desarrollo <- df_modelamiento_final_final_final %>%
     has_jardin, has_sol, has_pres, has_terres, has_verger, has_terreno_unspecified
   )
 
-df_reserva <- df_modelamiento_final_final_final %>%
+df_reserva <- df_modelamiento_listo %>%
   filter(año == 2023) %>%
   select(
     id_mutation,
@@ -597,7 +597,7 @@ print(tabla_comparativa)
 
 df_evaluacion <- df_resultados_reserva %>%
   left_join(
-    df_modelamiento_final_final_final %>%
+    df_modelamiento_listo %>%
       select(id_mutation, code_departement, nom_commune, type_local),
     by = "id_mutation"
   ) %>%
@@ -622,3 +622,7 @@ errores_tipo <- df_evaluacion %>%
   )
 print("=== ERRORES POR TIPO DE VIVIENDA ===")
 print(errores_tipo)
+
+
+
+
