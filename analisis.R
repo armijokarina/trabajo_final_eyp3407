@@ -507,7 +507,20 @@ rm(combinaciones_detalladas,df_limpio_final,df_limpio_prueba,df_limpio_sin_puro_
 library(glmnet)
 
 df_modelamiento_listo$año <- substr(df_modelamiento_listo$date_mutation, 1, 4)
+coordenadas_recuperadas <- transacciones_dvf %>%
+  select(id_mutation, latitude, longitude) %>%
+  # Agrupamos para asegurar que quede 1 sola coordenada por transacción
+  group_by(id_mutation) %>%
+  summarise(
+    latitude = first(latitude[!is.na(latitude)]),
+    longitude = first(longitude[!is.na(longitude)]),
+    .groups = "drop"
+  )
 
+# 2. Unir las coordenadas a tu base de modelamiento final
+df_modelamiento_listo <- df_modelamiento_listo %>%
+  left_join(coordenadas_recuperadas, by = "id_mutation")
+cat("Transacciones sin latitud/longitud:", sum(is.na(df_modelamiento_listo$latitude)), "\n")
 df_desarrollo <- df_modelamiento_listo %>%
   filter(año %in% c(2021, 2022)) %>%
   select(
@@ -515,7 +528,7 @@ df_desarrollo <- df_modelamiento_listo %>%
     log_valeur_fonciere,
     type_local, surface_habitable, piezas_max, n_dependances,
     surface_terrain_total, n_parcelles, nombre_lots_max,
-    has_jardin, has_sol, has_pres, has_terres, has_verger, has_terreno_unspecified
+    has_jardin, has_sol, has_pres, has_terres, has_verger, has_terreno_unspecified, latitude, longitude
   )
 
 df_reserva <- df_modelamiento_listo %>%
@@ -525,7 +538,7 @@ df_reserva <- df_modelamiento_listo %>%
     log_valeur_fonciere,
     type_local, surface_habitable, piezas_max, n_dependances,
     surface_terrain_total, n_parcelles, nombre_lots_max,
-    has_jardin, has_sol, has_pres, has_terres, has_verger, has_terreno_unspecified
+    has_jardin, has_sol, has_pres, has_terres, has_verger, has_terreno_unspecified, latitude, longitude
   )
 
 
@@ -661,7 +674,7 @@ modelo_gam <- gam(
     n_dependances +
     n_parcelles +
     nombre_lots_max +
-    has_jardin + has_sol + has_pres + has_terres + has_verger + has_terreno_unspecified,
+    has_jardin + has_sol + has_pres + has_terres + has_verger + has_terreno_unspecified + latitude + longitude,
   data = df_entrenamiento,
   method = "REML"
 )
@@ -701,7 +714,7 @@ calcular_metricas_gam <- function(df) {
   # Escala de Euros (Requerido Caso 9)
   mae_eur  <- mean(abs(real_eur - pred_eur))
   rmse_eur <- sqrt(mean((real_eur - pred_eur)^2))
-  med_ae_eur <- median(abs(real_eur - pred_eur)) # Útil ante asimetría inmobiliaria
+  med_ae_eur <- median(abs(real_eur - pred_eur))
 
   return(c(
     R2_log = round(r2, 4),
@@ -807,8 +820,8 @@ cat("MAE (Euros): €", round(mae_eur_xgb, 0), "\n")
 cat("RMSE (Euros): €", round(rmse_eur_xgb, 0), "\n")
 cat("Mediana Error Absoluto: €", round(med_ae_eur_xgb, 0), "\n\n")
 
-# 5. Gráfico de Importancia de Variables
-# Muestra cuáles variables fueron las más decisivas para reducir el error de los precios
+# Gráfico de Importancia de Variables
 importancia_xgb <- xgb.importance(feature_names = colnames(x_entrenamiento), model = modelo_xgb)
 xgb.plot.importance(importancia_xgb, top_n = 10, main = "Importancia de Variables - XGBoost", col = "darkred")
 
+unique(df_modelamiento_listo$nom_commune)
