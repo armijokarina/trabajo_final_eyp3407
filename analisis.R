@@ -648,6 +648,79 @@ errores_tipo <- df_evaluacion %>%
 print("=== ERRORES POR TIPO DE VIVIENDA ===")
 print(errores_tipo)
 
+########################
+######MODELO_GAM########
+########################
+library(mgcv)
+set.seed(4554)
+modelo_gam <- gam(
+  log_valeur_fonciere ~ type_local +
+    s(surface_habitable) +
+    s(surface_terrain_total) +
+    s(piezas_max) +
+    n_dependances +
+    n_parcelles +
+    nombre_lots_max +
+    has_jardin + has_sol + has_pres + has_terres + has_verger + has_terreno_unspecified,
+  data = df_entrenamiento,
+  method = "REML"
+)
 
+summary(modelo_gam)
+
+# Validación (2021-2022)
+df_resultados_validacion_gam <- df_validacion %>%
+  mutate(
+    prediccion_log = as.vector(predict(modelo_gam, newdata = df_validacion)),
+    precio_real_euros = exp(log_valeur_fonciere),
+    precio_predicho_euros = exp(prediccion_log),
+    error_abs_euros = abs(precio_real_euros - precio_predicho_euros)
+  )
+
+# Reserva / Prueba (2023)
+df_resultados_reserva_gam <- df_reserva %>%
+  mutate(
+    prediccion_log = as.vector(predict(modelo_gam, newdata = df_reserva)),
+    precio_real_euros = exp(log_valeur_fonciere),
+    precio_predicho_euros = exp(prediccion_log),
+    error_abs_euros = abs(precio_real_euros - precio_predicho_euros)
+  )
+
+calcular_metricas_gam <- function(df) {
+  real_log <- df$log_valeur_fonciere
+  pred_log <- df$prediccion_log
+  real_eur <- df$precio_real_euros
+  pred_eur <- df$precio_predicho_euros
+
+  # Escala Log
+  rss <- sum((real_log - pred_log)^2)
+  tss <- sum((real_log - mean(real_log))^2)
+  r2  <- 1 - (rss / tss)
+  rmse_log <- sqrt(mean((real_log - pred_log)^2))
+
+  # Escala de Euros (Requerido Caso 9)
+  mae_eur  <- mean(abs(real_eur - pred_eur))
+  rmse_eur <- sqrt(mean((real_eur - pred_eur)^2))
+  med_ae_eur <- median(abs(real_eur - pred_eur)) # Útil ante asimetría inmobiliaria
+
+  return(c(
+    R2_log = round(r2, 4),
+    RMSE_log = round(rmse_log, 4),
+    MAE_Euros = round(mae_eur, 2),
+    RMSE_Euros = round(rmse_eur, 2),
+    Mediana_AE_Euros = round(med_ae_eur, 2)
+  ))
+}
+
+metricas_val_gam <- calcular_metricas_gam(df_resultados_validacion_gam)
+metricas_res_gam <- calcular_metricas_gam(df_resultados_reserva_gam)
+
+tabla_comparativa_gam <- bind_rows(
+  data.frame(Conjunto = "Validación (GAM)", t(metricas_val_gam)),
+  data.frame(Conjunto = "Reserva 2023 (GAM)", t(metricas_res_gam))
+)
+
+print("=== DESEMPEÑO GLOBAL DEL MODELO GAM ===")
+print(tabla_comparativa_gam)
 
 
