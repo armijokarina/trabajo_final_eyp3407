@@ -723,4 +723,29 @@ tabla_comparativa_gam <- bind_rows(
 print("=== DESEMPEÑO GLOBAL DEL MODELO GAM ===")
 print(tabla_comparativa_gam)
 
+df_evaluacion_gam <- df_resultados_reserva_gam %>%
+  left_join(
+    df_modelamiento_listo %>% select(id_mutation, code_departement, nom_commune),
+    by = "id_mutation"
+  )
 
+# Desglose de errores por Tipo de Local (Maison vs Appartement)
+errores_tipo_gam <- df_evaluacion_gam %>%
+  group_by(type_local) %>%
+  summarise(
+    N_Transacciones = n(),
+    MAE_Euros = round(mean(error_abs_euros), 2),
+    RMSE_Euros = round(sqrt(mean((precio_real_euros - precio_predicho_euros)^2)), 2),
+    Mediana_Error_Euros = round(median(error_abs_euros), 2)
+  )
+
+print("=== ERRORES POR TIPO DE VIVIENDA (RESERVA 2023) ===")
+print(errores_tipo_gam)
+
+par(mfrow = c(1, 2))
+plot(modelo_gam, select = 1, shade = TRUE, col = "darkblue", main = "Efecto Superficie Habitable")
+plot(modelo_gam, select = 2, shade = TRUE, col = "darkgreen", main = "Efecto Superficie Terreno")
+par(mfrow = c(1, 1)) # Restablecer ventana gráfica
+
+par(mfrow = c(1, 3)) # Ponemos 3 gráficos en una misma fila
+plot(modelo_gam, scheme = 2, shade = TRUE, shade.col = "lightblue", seWithMean = TRUE)
