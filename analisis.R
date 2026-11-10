@@ -3,19 +3,14 @@ library(dplyr)
 #### Todas las posibles Combinaciones ###
 #########################################
 combinaciones_detalladas <- transacciones_dvf %>%
-  # 1. Para que los espacios vacíos no queden raros, les ponemos un nombre claro
   mutate(type_local = if_else(is.na(type_local), "Sin Tipo", type_local)) %>%
 
-  # 2. Agrupamos por transacción Y por tipo de local para contar cuántos hay de cada uno
   group_by(id_mutation, type_local) %>%
   summarise(cantidad = n(), .groups = "drop") %>%
 
-  # 3. Creamos la etiqueta específica (Ej: "2 Appartement", "1 Maison")
   mutate(etiqueta = paste(cantidad, type_local)) %>%
 
-  # 4. Volvemos a agrupar solo por transacción para unir todas sus etiquetas
   group_by(id_mutation) %>%
-  # Ordenamos alfabéticamente para que "A + B" sea igual a "B + A"
   arrange(type_local, .by_group = TRUE) %>%
   summarise(
     combinacion = paste(etiqueta, collapse = " + ")
@@ -28,7 +23,7 @@ View(combinaciones_detalladas)
 sum(combinaciones_detalladas$n)
 
 ##########################################
-### Eliminamos Todas las duplicaciones####
+### Eliminamos todos los duplicados####
 ##########################################
 df_sin_duplicados <- transacciones_dvf[!duplicated(transacciones_dvf), ]
 
@@ -91,19 +86,11 @@ diagnostico <- paso_1 %>%
 
 
 ids_a_borrar <- paso_1 %>%
-  # 1. Miramos ÚNICAMENTE las filas que tienen texto vacío (o NA real) en tipo de local
+  # Miramos ÚNICAMENTE las filas que tienen texto vacío (o NA real) en tipo de local
   filter(code_type_local == "" | is.na(code_type_local)) %>%
-
-  # 2. Agrupamos por transacción para evaluarlas
   group_by(id_mutation) %>%
-
-  # 3. Verificamos si en este subgrupo aislado existe al menos un texto vacío en cultura
   summarise(tiene_blanco_cultura = any(code_nature_culture == "" | is.na(code_nature_culture))) %>%
-
-  # 4. Filtramos las transacciones que cumplen la condición
   filter(tiene_blanco_cultura == TRUE) %>%
-
-  # 5. Extraemos los ID a una lista
   pull(id_mutation)
 
 
@@ -124,7 +111,7 @@ paso_na <- df_limpio_prueba %>%
 
 ids_manuales <- c("2022-1142503", "2021-1153903", "2022-1140688","2022-1142506","2022-1143152")
 
-# 2. Filtramos la base para quedarnos solo con los que NO están en esa lista
+#  Filtramos la base para quedarnos solo con los que NO están en esa lista
 df_limpio_final <- df_limpio_prueba %>%
   filter(!id_mutation %in% ids_manuales)
 
@@ -134,7 +121,7 @@ df_limpio_final <- df_limpio_prueba %>%
 ## TRATAMIENTO DE LAS VARIABLES PARA DEJAR UNA SOLA FILA POR TRANSACCIÓN ##
 ###########################################################################
 
-# 1. Banderas (flags) a nivel de fila
+#  Banderas (flags) a nivel de fila
 df_limpio_final <- df_limpio_final %>%
   mutate(
     # Banderas por tipo de fila
@@ -150,7 +137,7 @@ df_limpio_final <- df_limpio_final %>%
     has_verger = ifelse(!is.na(nature_culture) & nature_culture %in% c("vergers", "VI"), 1, 0)
   )
 
-# 2. Agregación a 1 fila por transacción -> df_modelamiento (Sin surface_dependances)
+# Agregación a 1 fila por transacción -> df_modelamiento (Sin surface_dependances)
 df_modelamiento <- df_limpio_final %>%
   group_by(id_mutation) %>%
   summarise(
@@ -253,66 +240,6 @@ df_modelamiento2 <- df_modelamiento1 %>%
   ungroup()
 
 
-#####################
-### Tabla resumen ###
-#####################
-
-#1. Total de datos
-total_datos <- n_distinct(transacciones_dvf$id_mutation)     # Número total de datos
-t1  <- n_distinct(df_sin_duplicados$id_mutation)                      # eliminación de duplicados
-t2  <- n_distinct(df_limpio_sin_comercial$id_mutation)        # Eliminación de comerciales
-t3  <- n_distinct(df_limpio_sin_mixtos$id_mutation)           # Eliminación casa-apartamento
-t4  <- n_distinct(df_limpio_sin_dos_viviendas$id_mutation)    # Eliminacion 2o+ residencias por transacción
-t5  <- n_distinct(df_limpio_sin_dependencia$id_mutation)      # Eliminacion solo dependencias
-t6  <- n_distinct(df_limpio_sin_puro_NA$id_mutation)          # Conservala si NO todas sus filas son NA (no hay residencia)
-t7  <- n_distinct(df_limpio_sin_DEPENDENCIA_NA$id_mutation)   # eliminacion dependencia+NA (No hay residencia principal)
-t8  <- n_distinct(df_limpio_prueba$id_mutation)               # Se revisaron NA en type_code, si eran un terreno y luego si tenía algo construido
-t9  <- n_distinct(df_limpio_final$id_mutation)                #
-t10 <- n_distinct(df_modelamiento1$id_mutation)               # Eliminación de NA en valor de la transacción
-t11 <- n_distinct(df_modelamiento2$id_mutation)               # No se eliminó nada, solo se reemplazaron 2 NA de numeros de pieza condicionando ciertas casas y tomando la media.
-conteos_t <-c(total_datos,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11)
-
-#View(transacciones_dvf)
-# Justificación: revisamos los NA vimos que no tenían números de pieza. Si tiene superficie construida como puedo
-# justificar que es una casa o apartamento y no local comercial.
-
-total_FILAS <- nrow(transacciones_dvf)     # Número total de datos
-t_1  <- nrow(df_sin_duplicados)                      # eliminación de duplicados
-t_2  <- nrow(df_limpio_sin_comercial)        # Eliminación de comerciales
-t_3  <- nrow(df_limpio_sin_mixtos)           # Eliminación casa-apartamento
-t_4  <- nrow(df_limpio_sin_dos_viviendas)    # Eliminacion 2o+ residencias por transacción
-t_5  <- nrow(df_limpio_sin_dependencia)      # Eliminacion solo dependencias
-t_6  <- nrow(df_limpio_sin_puro_NA)          # Conservala si NO todas sus filas son NA (no hay residencia)
-t_7  <- nrow(df_limpio_sin_DEPENDENCIA_NA)   # eliminacion dependencia+NA (No hay residencia principal)
-t_8  <- nrow(df_limpio_prueba)               # Se revisaron NA en type_code, si eran un terreno y luego si tenía algo construido
-t_9  <- nrow(df_limpio_final)                #
-t_10 <- nrow(df_modelamiento1)               # Eliminación de NA en valor de la transacción
-t_11 <- nrow(df_modelamiento2)
-conteos_tfilas <-c(total_FILAS,t_1,t_2,t_3,t_4,t_5,t_6,t_7,t_8,t_9,t_10,t_11)
-
-tabla_resumen_1 <- tibble( paso= 0:11,
-                           Criterio_de_eliminación = c("Base Original",
-                                                       "Eliminación duplicados",
-                                                       "Eliminación de locales comerciales e industriales",
-                                                       "Eliminación de transaccines mixtas (Maison+Appartement)",
-                                                       "Eliminación ventas en bloque (>=2 residencias)",
-                                                       "Eliminación de transacciones de solo dependencia",
-                                                       "Eliminacion de transacciones con solo NA en tipo local",
-                                                       "Eliminación de combinacion dependecia + NA",
-                                                       "Eliminacion de registros sin tipo y sin cultivo catastral",
-                                                       "Eliminación manual casos atípicos",
-                                                       "Eliminación de datos de transaccion con precio nulo o <=0",
-                                                       "Reemplazo de datos faltantes en cantidad de piezas"),
-                           Número_de_filas = conteos_tfilas,
-                           Transacciones_Conservadas = conteos_t,
-                           Transacciones_Descartadas = c(0,-diff(conteos_t)),
-                           Porcentaje_perdida_paso = c(0, round(100*(-diff(conteos_t))/lag(conteos_t)[-1],2)),
-                           Porcentaje_muestra_inicial= round(100*conteos_t/ total_datos,2)
-)
-print(tabla_resumen_1)
-View(tabla_resumen_1)
-
-
 ###########################
 ### Variables Continuas ###
 ###########################
@@ -352,7 +279,7 @@ print(b1)
 print(b2)
 print(b3)
 
-##
+
 
 contar_outliers <- function(x){
   q1 = quantile(x,0.25,na_rm = TRUE)
@@ -380,8 +307,6 @@ cat("4. Precios por m² aberrantes (>30.000 €/m^2):", sum(df_modelamiento3$pre
 #############################
 # No podemos eliminar la 50000 seguin la regla de los quantiles,
 # por lo que lo revisaremos a manos casos que pueden ser extremos si en realidad si son extremos
-# en uno de los docimentos que no se considera las casa menores a 8 m^2, aunque los revisé
-# View(df_modelamiento3)
 
 
 precios_altos_m2<-df_modelamiento3 %>%
@@ -540,8 +465,7 @@ df_modelamiento_listo <- df_modelamiento_listo %>%
     )
   ) %>%
   ungroup() %>%
-  # Fallback de seguridad: si una comuna entera tuviera solo NAs,
-  # imputa con la mediana global de todo el departamento 69
+
   mutate(
     latitude = ifelse(
       is.na(latitude),
@@ -595,6 +519,11 @@ y_validacion <- df_validacion$log_valeur_fonciere
 x_reserva <- model.matrix(log_valeur_fonciere ~ . - id_mutation, data = df_reserva)[, -1]
 y_reserva <- df_reserva$log_valeur_fonciere
 
+
+#############################
+#########MODELO LASSO########
+#############################
+
 modelo_lasso_cv <- cv.glmnet(x_entrenamiento, y_entrenamiento, alpha = 1, standardize = TRUE)
 mejor_lambda <- modelo_lasso_cv$lambda.min
 print(mejor_lambda)
@@ -637,33 +566,28 @@ cat("\n")
 print( "Variables eliminadas del modelo \n")
 print(df_eliminadas)
 
-# 1. Función para calcular las métricas de evaluación
+#Función para calcular las métricas de evaluación
 calcular_metricas <- function(real, predicho) {
-  # Suma de cuadrados de los residuos (RSS)
   rss <- sum((real - predicho)^2)
-  # Suma total de cuadrados (TSS)
   tss <- sum((real - mean(real))^2)
 
-  # Fórmulas matemáticas
   r2 <- 1 - (rss / tss)
   rmse <- sqrt(mean((real - predicho)^2))
 
   return(c(R2 = round(r2, 4), RMSE = round(rmse, 4)))
 }
 
-# 2. Calcular las métricas en la base de VALIDACIÓN (escala log)
 metricas_validacion <- calcular_metricas(
   real = df_resultados_validacion$log_valeur_fonciere,
   predicho = df_resultados_validacion$prediccion_log
 )
 
-# 3. Calcular las métricas en la base de RESERVA (escala log)
+
 metricas_reserva <- calcular_metricas(
   real = df_resultados_reserva$log_valeur_fonciere,
   predicho = df_resultados_reserva$prediccion_log
 )
 
-# 4. Unir todo en una tabla comparativa para visualizar
 tabla_comparativa <- bind_rows(
   data.frame(Conjunto = "Validación (2021-2022)", R2 = metricas_validacion["R2"], RMSE = metricas_validacion["RMSE"]),
   data.frame(Conjunto = "Reserva (2023)", R2 = metricas_reserva["R2"], RMSE = metricas_reserva["RMSE"])
@@ -699,6 +623,26 @@ errores_tipo <- df_evaluacion %>%
   )
 print("=== ERRORES POR TIPO DE VIVIENDA ===")
 print(errores_tipo)
+
+# examen de alto valor
+umbral_alto_valor_lasso <- quantile(df_evaluacion$precio_real_euros, 0.95)
+evaluacion_alto_valor_lasso <- df_evaluacion %>%
+  mutate(
+    categoria_precio = ifelse(precio_real_euros >= umbral_alto_valor_lasso,
+                              "Top 5% (Alto Valor)",
+                              "Normal (95% restante)")
+  ) %>%
+  group_by(categoria_precio) %>%
+  summarise(
+    N_Transacciones = n(),
+    Precio_Medio = round(mean(precio_real_euros), 0),
+    MAE_Euros = round(mean(error_abs_euros), 0),
+    RMSE_Euros = round(sqrt(mean((precio_real_euros - precio_predicho_euros)^2)), 0),
+    Mediana_Error = round(median(error_abs_euros), 0)
+  )
+
+print("=== DESEMPEÑO EN VENTAS DE ALTO VALOR (LASSO) ===")
+print(evaluacion_alto_valor_lasso)
 
 ########################
 ######MODELO_GAM########
@@ -804,7 +748,26 @@ plot(modelo_gam, scheme = 2, shade = TRUE, shade.col = "lightblue", seWithMean =
 
 concurvity(modelo_gam, full = TRUE)
 
+#EXAMEN ALTO VALOR GAM
+umbral_alto_valor_gam <- quantile(df_evaluacion_gam$precio_real_euros, 0.95)
 
+evaluacion_alto_valor_gam <- df_evaluacion_gam %>%
+  mutate(
+    categoria_precio = ifelse(precio_real_euros >= umbral_alto_valor_gam,
+                              "Top 5% (Alto Valor)",
+                              "Normal (95% restante)")
+  ) %>%
+  group_by(categoria_precio) %>%
+  summarise(
+    N_Transacciones = n(),
+    Precio_Medio = round(mean(precio_real_euros), 0),
+    MAE_Euros = round(mean(error_abs_euros), 0),
+    RMSE_Euros = round(sqrt(mean((precio_real_euros - precio_predicho_euros)^2)), 0),
+    Mediana_Error = round(median(error_abs_euros), 0)
+  )
+
+print("=== DESEMPEÑO EN VENTAS DE ALTO VALOR (GAM) ===")
+print(evaluacion_alto_valor_lasso)
 
 
 #############################################
@@ -859,9 +822,91 @@ cat("MAE (Euros): €", round(mae_eur_xgb, 0), "\n")
 cat("RMSE (Euros): €", round(rmse_eur_xgb, 0), "\n")
 cat("Mediana Error Absoluto: €", round(med_ae_eur_xgb, 0), "\n\n")
 
+# examen de alto valor xgboost
+umbral_alto_valor_xgb <- quantile(df_resultados_reserva_xgb$precio_real_euros, 0.95)
+
+evaluacion_alto_valor_xgb <- df_resultados_reserva_xgb %>%
+  mutate(
+    categoria_precio = ifelse(precio_real_euros >= umbral_alto_valor_xgb,
+                              "Top 5% (Alto Valor)",
+                              "Normal (95% restante)")
+  ) %>%
+  group_by(categoria_precio) %>%
+  summarise(
+    N_Transacciones = n(),
+    Precio_Medio = round(mean(precio_real_euros), 0),
+    MAE_Euros = round(mean(error_abs_euros), 0),
+    RMSE_Euros = round(sqrt(mean((precio_real_euros - precio_predicho_euros)^2)), 0),
+    Mediana_Error = round(median(error_abs_euros), 0)
+  )
+
+print("=== DESEMPEÑO EN VENTAS DE ALTO VALOR (XGBOOST) ===")
+print(evaluacion_alto_valor_xgb)
+
+
 # Gráfico de Importancia de Variables
 importancia_xgb <- xgb.importance(feature_names = colnames(x_entrenamiento), model = modelo_xgb)
 xgb.plot.importance(importancia_xgb, top_n = 10, main = "Importancia de Variables - XGBoost", col = "darkred")
+
+
+#############################################
+######localizaciones con pocos antecedentes##
+#############################################
+# 1. Calcular cuántas ventas tuvo cada comuna durante el periodo de ENTRENAMIENTO (2021-2022)
+conteo_comunas_entrenamiento <- df_modelamiento_listo %>%
+  filter(año %in% c("2021", "2022")) %>%
+  group_by(nom_commune) %>%
+  summarise(ventas_historicas = n(), .groups = "drop")
+
+# 2. Preparar los datos del XGBoost (le falta la columna nom_commune, se la agregamos)
+df_evaluacion_xgb <- df_resultados_reserva_xgb %>%
+  left_join(
+    df_modelamiento_listo %>% select(id_mutation, nom_commune),
+    by = "id_mutation"
+  )
+
+# 3. Unir los resultados de los 3 modelos en una sola tabla larga
+df_errores_todos <- bind_rows(
+  df_evaluacion %>%
+    select(id_mutation, nom_commune, precio_real_euros, precio_predicho_euros, error_abs_euros) %>%
+    mutate(Modelo = "1. LASSO"),
+
+  df_evaluacion_gam %>%
+    select(id_mutation, nom_commune, precio_real_euros, precio_predicho_euros, error_abs_euros) %>%
+    mutate(Modelo = "2. GAM"),
+
+  df_evaluacion_xgb %>%
+    select(id_mutation, nom_commune, precio_real_euros, precio_predicho_euros, error_abs_euros) %>%
+    mutate(Modelo = "3. XGBoost")
+)
+
+# 4. Cruzar con la historia de la comuna y calcular las métricas
+evaluacion_localizaciones_modelos <- df_errores_todos %>%
+  left_join(conteo_comunas_entrenamiento, by = "nom_commune") %>%
+  mutate(
+    # Si la comuna no existía en 2021-2022, el join dejará NA, lo reemplazamos por 0
+    ventas_historicas = ifelse(is.na(ventas_historicas), 0, ventas_historicas),
+
+    # Clasificamos las comunas según su liquidez histórica
+    categoria_volumen = case_when(
+      ventas_historicas <= 10 ~ "1. Pocos antecedentes (<= 10 ventas)",
+      ventas_historicas <= 50 ~ "2. Antecedentes medios (11-50 ventas)",
+      TRUE ~ "3. Muchos antecedentes (> 50 ventas)"
+    )
+  ) %>%
+  group_by(Modelo, categoria_volumen) %>%
+  summarise(
+    N_Transacciones_2023 = n(),
+    MAE_Euros = round(mean(error_abs_euros), 0),
+    RMSE_Euros = round(sqrt(mean((precio_real_euros - precio_predicho_euros)^2)), 0),
+    .groups = "drop"
+  ) %>%
+  arrange(categoria_volumen, Modelo)
+
+# Imprimir la tabla final
+print("=== DESEMPEÑO POR VOLUMEN HISTÓRICO DE LA COMUNA (COMPARATIVA) ===")
+print(evaluacion_localizaciones_modelos)
+
 
 ########################################
 #### Modelos sin longitud y latitud ####
@@ -919,7 +964,21 @@ mejor_lambda_sin_ll <- modelo_lasso_sin_ll$lambda.min
 pred_val_lasso_sin_ll <- as.vector(predict(modelo_lasso_sin_ll, s=mejor_lambda_sin_ll, newx = x_val_sin_ll))
 pred_res_lasso_sin_ll <- as.vector(predict(modelo_lasso_sin_ll, s = mejor_lambda_sin_ll,newx = x_res_sin_ll))
 
+matriz_coef_sin_ll <- as.matrix(coef(modelo_lasso_sin_ll,s=mejor_lambda_sin_ll))
+df_coeficientes_sin_ll <- data.frame( Variable = rownames(matriz_coef_sin_ll),
+                               Coeficientes = matriz_coef_sin_ll[,1],
+                               stringsAsFactors = FALSE)
 
+df_conservadas <- df_coeficientes_sin_ll %>%
+  filter(Coeficientes != 0)
+
+df_eliminadas <- df_coeficientes_sin_ll %>%
+  filter(Coeficientes == 0 )
+print( "Variables conservadas del modelo \n")
+print(df_conservadas)
+cat("\n")
+print( "Variables eliminadas del modelo \n")
+print(df_eliminadas)
 
 
 
@@ -1029,6 +1088,22 @@ pred_val_lasso_sin_log  <- as.vector(predict(modelo_lasso_sin_log, s = mejor_lam
 pred_res_lasso_sin_log  <-  as.vector(predict(modelo_lasso_sin_log, s = mejor_lambda_sin_log, newx = x_res_sin_log))
 pred_log_lasso_sin_con_log <- log(pred_val_lasso_sin_log)
 
+matriz_coef_sin_log <- as.matrix(coef(modelo_lasso_sin_log,s=mejor_lambda_sin_log))
+df_coeficientes_sin_log <- data.frame( Variable = rownames(matriz_coef_sin_log),
+                                      Coeficientes = matriz_coef_sin_log[,1],
+                                      stringsAsFactors = FALSE)
+
+df_conservadas <- df_coeficientes_sin_log %>%
+  filter(Coeficientes != 0)
+
+df_eliminadas <- df_coeficientes_sin_log %>%
+  filter(Coeficientes == 0 )
+print( "Variables conservadas del modelo \n")
+print(df_conservadas)
+cat("\n")
+print( "Variables eliminadas del modelo \n")
+print(df_eliminadas)
+
 ###########################
 ### GAM sin logaritmo ####
 ###########################
@@ -1101,7 +1176,7 @@ funcion_para_metricas_casos <- function(real_log, pred_log, es_log = T) {
   ))
 }
 pred_res_xgb_caso1 <-  predict(modelo_xgb, newdata = dtest)
-pred_val_xgb_caso1 <- predict(modelo_xgb, newdata = dval)
+pred_val_xgb_caso1 <- predict(modelo_xgb, newdata = dvalal)
 
 tabla_comparativa_validacion <- bind_rows(
   # Casos de la log + lati/long
