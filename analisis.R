@@ -375,10 +375,6 @@ t13 <- n_distinct(df_modelamiento_final_final$id_mutation)   # Eliminación todo
 t14 <- n_distinct(df_modelamiento_listo)                      # Eliminacion m2<1000
 conteos_t <- c(total_datos, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14)
 
-#View(transacciones_dvf)
-# Justificación: revisamos los NA vimos que no tenían números de pieza. Si tiene superficie construida como puedo
-# justificar que es una casa o apartamento y no local comercial.
-
 total_FILAS <- nrow(transacciones_dvf)     # Número total de datos
 t_1  <- nrow(df_sin_duplicados)                      # eliminación de duplicados
 t_2  <- nrow(df_limpio_sin_comercial)        # Eliminación de comerciales
@@ -420,7 +416,7 @@ tabla_resumen_1 <- tibble( paso= 0:14,
 )
 print(tabla_resumen_1)
 View(tabla_resumen_1)
-
+#limpieza de variables y datos
 rm(combinaciones_detalladas,df_limpio_final,df_limpio_prueba,df_limpio_sin_puro_NA,
    df_limpio_sin_dependencia,df_limpio_sin_comercial,df_limpio_sin_DEPENDENCIA_NA,df_limpio_sin_mixtos
    ,df_modelamiento1,df_modelamiento,df_modelamiento_final,df_modelamiento2,df_modelamiento3,
@@ -482,7 +478,9 @@ df_modelamiento_listo <- df_modelamiento_listo %>%
 
 
 
-
+###################################################
+#Creacion de particion de desarrollo y de reserva##
+###################################################
 
 df_desarrollo <- df_modelamiento_listo %>%
   filter(año %in% c(2021, 2022)) %>%
@@ -527,7 +525,7 @@ y_reserva <- df_reserva$log_valeur_fonciere
 modelo_lasso_cv <- cv.glmnet(x_entrenamiento, y_entrenamiento, alpha = 1, standardize = TRUE)
 mejor_lambda <- modelo_lasso_cv$lambda.min
 print(mejor_lambda)
-
+##predicciones con validacion
 predicciones_validacion <- predict(modelo_lasso_cv, s = mejor_lambda, newx = x_validacion)
 
 df_resultados_validacion <- df_validacion %>%
@@ -537,7 +535,7 @@ df_resultados_validacion <- df_validacion %>%
     precio_real_euros = exp(log_valeur_fonciere),
     precio_predicho_euros = exp(prediccion_log)
   )
-
+#predicciones con reserva
 predicciones_reserva <- predict(modelo_lasso_cv, s = mejor_lambda, newx = x_reserva)
 
 df_resultados_reserva <- df_reserva %>%
@@ -681,20 +679,18 @@ df_resultados_reserva_gam <- df_reserva %>%
     precio_predicho_euros = exp(prediccion_log),
     error_abs_euros = abs(precio_real_euros - precio_predicho_euros)
   )
-
+#metricas calculo
 calcular_metricas_gam <- function(df) {
   real_log <- df$log_valeur_fonciere
   pred_log <- df$prediccion_log
   real_eur <- df$precio_real_euros
   pred_eur <- df$precio_predicho_euros
 
-  # Escala Log
   rss <- sum((real_log - pred_log)^2)
   tss <- sum((real_log - mean(real_log))^2)
   r2  <- 1 - (rss / tss)
   rmse_log <- sqrt(mean((real_log - pred_log)^2))
 
-  # Escala de Euros (Requerido Caso 9)
   mae_eur  <- mean(abs(real_eur - pred_eur))
   rmse_eur <- sqrt(mean((real_eur - pred_eur)^2))
   med_ae_eur <- median(abs(real_eur - pred_eur))
@@ -852,20 +848,17 @@ xgb.plot.importance(importancia_xgb, top_n = 10, main = "Importancia de Variable
 #############################################
 ######localizaciones con pocos antecedentes##
 #############################################
-# 1. Calcular cuántas ventas tuvo cada comuna durante el periodo de ENTRENAMIENTO (2021-2022)
 conteo_comunas_entrenamiento <- df_modelamiento_listo %>%
   filter(año %in% c("2021", "2022")) %>%
   group_by(nom_commune) %>%
   summarise(ventas_historicas = n(), .groups = "drop")
 
-# 2. Preparar los datos del XGBoost (le falta la columna nom_commune, se la agregamos)
 df_evaluacion_xgb <- df_resultados_reserva_xgb %>%
   left_join(
     df_modelamiento_listo %>% select(id_mutation, nom_commune),
     by = "id_mutation"
   )
 
-# 3. Unir los resultados de los 3 modelos en una sola tabla larga
 df_errores_todos <- bind_rows(
   df_evaluacion %>%
     select(id_mutation, nom_commune, precio_real_euros, precio_predicho_euros, error_abs_euros) %>%
@@ -880,14 +873,11 @@ df_errores_todos <- bind_rows(
     mutate(Modelo = "3. XGBoost")
 )
 
-# 4. Cruzar con la historia de la comuna y calcular las métricas
 evaluacion_localizaciones_modelos <- df_errores_todos %>%
   left_join(conteo_comunas_entrenamiento, by = "nom_commune") %>%
   mutate(
-    # Si la comuna no existía en 2021-2022, el join dejará NA, lo reemplazamos por 0
     ventas_historicas = ifelse(is.na(ventas_historicas), 0, ventas_historicas),
 
-    # Clasificamos las comunas según su liquidez histórica
     categoria_volumen = case_when(
       ventas_historicas <= 10 ~ "1. Pocos antecedentes (<= 10 ventas)",
       ventas_historicas <= 50 ~ "2. Antecedentes medios (11-50 ventas)",
@@ -939,7 +929,7 @@ df_entrenamiento_sin_ll <- df_sin_ll[indices_entrenamiento,]
 df_validacion_sin_ll <- df_sin_ll[-indices_entrenamiento,]
 
 ################################
-## matricces para Lasso y XGboost sin coordenadas
+## matrices para Lasso y XGboost sin coordenadas
 ################################
 
 x_ent_sin_ll <- model.matrix(log_valeur_fonciere ~ . -id_mutation, data = df_entrenamiento_sin_ll)[,-1]
@@ -1122,9 +1112,9 @@ rmse_gam_sin_log <- sqrt(mean((df_reserva_sin_log$valeur_fonciere-pred_reserva_g
 
 cat("MAE en Euros (GAM sin log): €", round(mae_gam_sin_log, 0), "\\n")
 cat("RMSE en Euros (GAM sin log): €", round(rmse_gam_sin_log, 0), "\\n")
-####
+###################
 ## XGBoost sin log
-#####
+###################
 
 df_ent_sin_log <- xgb.DMatrix(data = x_ent_sin_log, label = y_ent_sin_log)
 df_val_sin_log <- xgb.DMatrix(data = x_val_sin_log, label = y_val_sin_log)
@@ -1256,51 +1246,40 @@ grid.arrange(g1, g2, g3, ncol = 3)
 
 
 
-# 1. Mapa de puntos según el precio en escala logarítmica
 ggplot(df_modelamiento_listo, aes(x = longitude, y = latitude, color = log_valeur_fonciere)) +
   geom_point(alpha = 0.5, size = 1.2) + scale_color_viridis_c(option = "magma", name = "Log(Precio)") +
   theme_minimal() + labs( title = "Distribución Geográfica de Transacciones Inmobiliarias", subtitle = "Departamento de Rhône, Francia", x = "Longitud", y = "Latitud" ) +
-  coord_quickmap() # Mantiene la proporción geográfica correcta
+  coord_quickmap()
 
 
 library(maps)
-# Cargar mapa base de departamentos franceses
 mapa_francia <-  map_data("france")
 mapa_rhone <-  mapa_francia %>% filter(region == "Rhone")
 
 ggplot() +
-  # Dibujar mapa de Francia de fondo
   geom_polygon(data = mapa_francia, aes(x = long, y = lat, group = group), fill = "#181818", color = "#333333") +
-  # Superponer los datos inmobiliarios
   geom_point(data = df_modelamiento_listo, aes(x = longitude, y = latitude, color = log_valeur_fonciere), alpha = 0.6, size = 1) +
   scale_color_viridis_c(name = "Log(Precio)", option = "viridis") +
   scale_color_gradient( name = "Log(Precio)", low = "#f1c40f",
                         high = "#ffffff" ) +
-# Limitar los ejes a la región de Rhône (Lat \~45.4 a 46.3, Long \~4.3 a 5.3)
   coord_fixed(xlim = c(4.3, 5.3), ylim = c(45.4, 46.3), ratio = 1.3) +
   theme_minimal() +
   labs( title = "Ubicación de Propiedades en Rhône (Francia)", x = "Longitud", y = "Latitud" )
 
 
 ggplot() +
-  # 2. Dibujar todo el fondo de Francia en gris muy oscuro
   geom_polygon( data = mapa_francia,
                 aes(x = long, y = lat, group = group),
                 fill = "#181818", color = "#333333" ) +
-  # 3. DESTACAR EN GRANDE Y RELLENAR EL DEPARTAMENTO DE RHÔNE EN AMARILLO
   geom_polygon( data = mapa_rhone,
                 aes(x = long, y = lat, group = group),
-                fill = "#f1c40f", # Amarillo brillante para toda la zona
-                color = "#f39c12", # Borde amarillo-naranja
+                fill = "#f1c40f",
+                color = "#f39c12",
                 size = 0.8 ) +
-  # 4. Superponer las propiedades como puntos blancos relucientes
   geom_point( data = df_modelamiento_listo,
               aes(x = longitude, y = latitude), color = "gray",
-              # Puntos en blanco puro
               alpha = 0.7, size = 1.1 ) +
-  # 5. Encuadre y Zoom exacto al área de Rhône
   coord_fixed(xlim = c(4.3, 5.3), ylim = c(45.4, 46.3), ratio = 1.3) +
-  # 6\. Estilo Modo Oscuro (Dark Theme)
   theme_minimal() +
   theme( plot.background = element_rect(fill = "black", color = "black"),
          panel.background = element_rect(fill = "black", color = "black"),
