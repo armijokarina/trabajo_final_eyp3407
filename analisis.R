@@ -655,9 +655,9 @@ library(mgcv)
 set.seed(4554)
 modelo_gam <- gam(
   log_valeur_fonciere ~ type_local +
-    s(surface_habitable) +
-    s(surface_terrain_total) +
-    s(piezas_max) +
+    s(surface_habitable, k=10) +
+    s(surface_terrain_total, k=10) +
+    piezas_max +
     n_dependances +
     n_parcelles +
     nombre_lots_max +
@@ -749,3 +749,66 @@ par(mfrow = c(1, 1)) # Restablecer ventana gráfica
 
 par(mfrow = c(1, 3)) # Ponemos 3 gráficos en una misma fila
 plot(modelo_gam, scheme = 2, shade = TRUE, shade.col = "lightblue", seWithMean = TRUE)
+
+concurvity(modelo_gam, full = TRUE)
+
+
+
+
+#############################################
+#####modelo_xgboost##########################
+#############################################
+library(xgboost)
+
+dtrain <- xgb.DMatrix(data = x_entrenamiento, label = y_entrenamiento)
+dval   <- xgb.DMatrix(data = x_validacion, label = y_validacion)
+dtest  <- xgb.DMatrix(data = x_reserva, label = y_reserva)
+
+parametros_xgb <- list(
+  max_depth = 6,
+  eta = 0.05,
+  objective = "reg:squarederror"
+)
+
+set.seed(4554)
+modelo_xgb <- xgb.train(
+  params = parametros_xgb,
+  data = dtrain,
+  nrounds = 1000,
+  evals = list(train = dtrain, val = dval),
+  early_stopping_rounds = 50,
+  print_every_n = 100
+)
+
+
+cat("\nEl modelo se detuvo óptimamente en la iteración:", modelo_xgb$best_iteration, "\n")
+
+df_resultados_reserva_xgb <- df_reserva %>%
+  mutate(
+    prediccion_log = predict(modelo_xgb, newdata = dtest),
+    precio_real_euros = exp(log_valeur_fonciere),
+    precio_predicho_euros = exp(prediccion_log),
+    error_abs_euros = abs(precio_real_euros - precio_predicho_euros)
+  )
+
+metricas_res_xgb <- calcular_metricas(
+  real = df_resultados_reserva_xgb$log_valeur_fonciere,
+  predicho = df_resultados_reserva_xgb$prediccion_log
+)
+
+mae_eur_xgb <- mean(df_resultados_reserva_xgb$error_abs_euros)
+rmse_eur_xgb <- sqrt(mean(df_resultados_reserva_xgb$error_abs_euros^2))
+med_ae_eur_xgb <- median(df_resultados_reserva_xgb$error_abs_euros)
+
+cat("\n=== DESEMPEÑO XGBOOST EN RESERVA (2023) ===\n")
+cat("R2 (log):", metricas_res_xgb["R2"], "\n")
+cat("RMSE (log):", metricas_res_xgb["RMSE"], "\n")
+cat("MAE (Euros): €", round(mae_eur_xgb, 0), "\n")
+cat("RMSE (Euros): €", round(rmse_eur_xgb, 0), "\n")
+cat("Mediana Error Absoluto: €", round(med_ae_eur_xgb, 0), "\n\n")
+
+# 5. Gráfico de Importancia de Variables
+# Muestra cuáles variables fueron las más decisivas para reducir el error de los precios
+importancia_xgb <- xgb.importance(feature_names = colnames(x_entrenamiento), model = modelo_xgb)
+xgb.plot.importance(importancia_xgb, top_n = 10, main = "Importancia de Variables - XGBoost", col = "darkred")
+
