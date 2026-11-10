@@ -713,7 +713,7 @@ modelo_gam <- gam(
     n_dependances +
     n_parcelles +
     nombre_lots_max +
-    has_jardin + has_sol + has_pres + has_terres + has_verger + has_terreno_unspecified + latitude + longitude,
+    has_jardin + has_sol + has_pres + has_terres + has_verger + has_terreno_unspecified + s(longitude,latitude) ,
   data = df_entrenamiento,
   method = "REML"
 )
@@ -862,4 +862,377 @@ cat("Mediana Error Absoluto: €", round(med_ae_eur_xgb, 0), "\n\n")
 # Gráfico de Importancia de Variables
 importancia_xgb <- xgb.importance(feature_names = colnames(x_entrenamiento), model = modelo_xgb)
 xgb.plot.importance(importancia_xgb, top_n = 10, main = "Importancia de Variables - XGBoost", col = "darkred")
+
+########################################
+#### Modelos sin longitud y latitud ####
+########################################}
+
+df_modelamiento_listo <- df_modelamiento_listo %>%
+  mutate(type_local = as.factor(type_local))
+df_sin_ll <- df_modelamiento_listo %>%
+  filter(año %in% c(2021, 2022)) %>%
+  select(id_mutation, log_valeur_fonciere,
+         type_local, surface_habitable,
+         piezas_max, n_dependances,
+         surface_terrain_total,
+         n_parcelles, nombre_lots_max,
+         has_jardin, has_sol, has_pres,
+         has_terres, has_verger,
+         has_terreno_unspecified)
+df_reserva_sin_ll <- df_modelamiento_listo %>%
+  filter(año == 2023) %>%
+  select(id_mutation, log_valeur_fonciere,
+         type_local, surface_habitable,
+         piezas_max, n_dependances,
+         surface_terrain_total,
+         n_parcelles, nombre_lots_max,
+         has_jardin, has_sol, has_pres,
+         has_terres, has_verger,
+         has_terreno_unspecified)
+
+df_entrenamiento_sin_ll <- df_sin_ll[indices_entrenamiento,]
+df_validacion_sin_ll <- df_sin_ll[-indices_entrenamiento,]
+
+################################
+## matricces para Lasso y XGboost sin coordenadas
+################################
+
+x_ent_sin_ll <- model.matrix(log_valeur_fonciere ~ . -id_mutation, data = df_entrenamiento_sin_ll)[,-1]
+y_ent_sin_ll <- df_entrenamiento_sin_ll$log_valeur_fonciere
+
+x_val_sin_ll <- model.matrix(log_valeur_fonciere ~. - id_mutation, df_validacion_sin_ll)[,-1]
+y_val_sin_ll <- df_validacion_sin_ll$log_valeur_fonciere
+
+
+x_res_sin_ll <- model.matrix(log_valeur_fonciere ~ . -id_mutation, data = df_reserva_sin_ll)[,-1]
+y_res_sin_ll <- df_reserva_sin_ll$log_valeur_fonciere
+
+#####################################
+### modelo con regularizacion Lasso##
+#####################################
+set.seed(4554)
+modelo_lasso_sin_ll <- cv.glmnet(x_ent_sin_ll, y_ent_sin_ll, alpha = 1,
+                                 standardize = T )
+mejor_lambda_sin_ll <- modelo_lasso_sin_ll$lambda.min
+
+
+pred_val_lasso_sin_ll <- as.vector(predict(modelo_lasso_sin_ll, s=mejor_lambda_sin_ll, newx = x_val_sin_ll))
+pred_res_lasso_sin_ll <- as.vector(predict(modelo_lasso_sin_ll, s = mejor_lambda_sin_ll,newx = x_res_sin_ll))
+
+
+
+
+
+
+
+##########################
+### modelo gam sin ll ###
+##########################
+
+modelo_gam_sin_ll <- gam( log_valeur_fonciere ~ type_local +s(surface_habitable,k=10)+
+                            s(surface_terrain_total, k=10)+
+                            piezas_max + n_dependances +n_parcelles + nombre_lots_max+
+                            has_jardin + has_sol +has_pres + has_terres + has_verger +
+                            has_terreno_unspecified,
+                          data = df_entrenamiento_sin_ll,
+                          method = "REML")
+
+
+
+pred_val_gam_sin_ll <- as.vector(predict(modelo_gam_sin_ll,newdata = df_validacion_sin_ll))
+pred_res_gam_sin_ll <- as.vector(predict(modelo_gam_sin_ll, newdata = df_reserva_sin_ll))
+
+
+
+###############################################
+### Modelo XGBoost sin latitud y longitud ####
+###############################################
+df_ent_sin_ll <-xgb.DMatrix(data = x_ent_sin_ll, label = y_ent_sin_ll)
+df_val_sin_ll <- xgb.DMatrix(data = x_val_sin_ll, label = y_val_sin_ll)
+df_prueba_sin_ll <- xgb.DMatrix(data = x_res_sin_ll,label = y_res_sin_ll)
+
+
+params_xgb_sin_ll <- list(max_depth = 6,
+                          eta = 0.005,
+                          objective = "reg:squarederror")
+
+
+
+set.seed(4554)
+modelo_xgb_sin_ll <- xgb.train(params = params_xgb_sin_ll,
+                               data = df_ent_sin_ll,
+                               nrounds = 3000,
+                               evals = list(train=df_ent_sin_ll,val= df_val_sin_ll),
+                               early_stopping_rounds = 50,
+                               verbose = 0)
+
+
+pred_val_xgb_sg <-  predict(modelo_xgb_sin_ll, newdata = df_val_sin_ll)
+pred_res_xgb_sg <-  predict(modelo_xgb_sin_ll, newdata = df_prueba_sin_ll)
+
+
+
+
+#########################################
+#### Modelo sin logaritmo del precio ####
+#########################################
+
+
+df_desarrollo_sin_log <- df_modelamiento_listo %>%
+  filter(año %in% c(2021,2022)) %>%
+  select(id_mutation, valeur_fonciere,
+         type_local, surface_habitable,
+         piezas_max, n_dependances,
+         surface_terrain_total,
+         n_parcelles, nombre_lots_max,
+         has_jardin, has_sol, has_pres,
+         has_terres, has_verger,
+         has_terreno_unspecified, latitude, longitude)
+
+df_reserva_sin_log <- df_modelamiento_listo %>%
+  filter(año == 2023) %>%
+  select(id_mutation, valeur_fonciere,
+         type_local, surface_habitable,
+         piezas_max, n_dependances,
+         surface_terrain_total,
+         n_parcelles, nombre_lots_max,
+         has_jardin, has_sol, has_pres,
+         has_terres, has_verger,
+         has_terreno_unspecified, latitude ,longitude)
+
+
+df_entrenamiento_sin_log <- df_desarrollo_sin_log[indices_entrenamiento,]
+df_validacion_sin_log <- df_desarrollo_sin_log[-indices_entrenamiento,]
+
+#matrices lasso y xgboost en euros directo
+
+x_ent_sin_log <- model.matrix(valeur_fonciere ~.-id_mutation, data = df_entrenamiento_sin_log)[,-1]
+y_ent_sin_log <- df_entrenamiento_sin_log$valeur_fonciere
+
+x_val_sin_log <- model.matrix(valeur_fonciere ~.-id_mutation, data = df_validacion_sin_log)[,-1]
+y_val_sin_log <- df_validacion_sin_log$valeur_fonciere
+
+x_res_sin_log <- model.matrix(valeur_fonciere ~.-id_mutation, data = df_reserva_sin_log)[,-1]
+y_res_sin_log <- df_reserva_sin_log$valeur_fonciere
+
+
+####################################
+### Modelo Lasso sin logaritmo ####
+####################################
+set.seed(4554)
+modelo_lasso_sin_log <- cv.glmnet(x_ent_sin_log,y_ent_sin_log, alpha=1,
+                                  standardize = T)
+mejor_lambda_sin_log <- modelo_lasso_sin_log$lambda.min
+
+
+pred_val_lasso_sin_log  <- as.vector(predict(modelo_lasso_sin_log, s = mejor_lambda_sin_log, newx = x_val_sin_log))
+pred_res_lasso_sin_log  <-  as.vector(predict(modelo_lasso_sin_log, s = mejor_lambda_sin_log, newx = x_res_sin_log))
+pred_log_lasso_sin_con_log <- log(pred_val_lasso_sin_log)
+
+###########################
+### GAM sin logaritmo ####
+###########################
+modelo_gam_sin_log <- gam(valeur_fonciere ~ type_local + s(surface_habitable,k=10) +
+                            s(surface_terrain_total,k=10)+ piezas_max + n_dependances
+                          + n_parcelles + nombre_lots_max + has_jardin + has_sol
+                          + has_pres + has_terres + has_verger + has_terreno_unspecified
+                          + latitude + longitude, data = df_entrenamiento_sin_log,
+                          method = "REML")
+
+
+pred_val_gam_sin_log <- predict(modelo_gam_sin_log, newdata = df_validacion_sin_log)
+pred_reserva_gam_sin_log <- predict(modelo_gam_sin_log,newdata = df_reserva_sin_log)
+mae_gam_sin_log <- mean(abs(df_reserva_sin_log$valeur_fonciere-pred_reserva_gam_sin_log))
+rmse_gam_sin_log <- sqrt(mean((df_reserva_sin_log$valeur_fonciere-pred_reserva_gam_sin_log)^2))
+
+cat("MAE en Euros (GAM sin log): €", round(mae_gam_sin_log, 0), "\\n")
+cat("RMSE en Euros (GAM sin log): €", round(rmse_gam_sin_log, 0), "\\n")
+####
+## XGBoost sin log
+#####
+
+df_ent_sin_log <- xgb.DMatrix(data = x_ent_sin_log, label = y_ent_sin_log)
+df_val_sin_log <- xgb.DMatrix(data = x_val_sin_log, label = y_val_sin_log)
+df_res_sin_log <- xgb.DMatrix(data = x_res_sin_log, label = y_res_sin_log)
+
+params_xgb_sin_log <- list(max_depth = 6 ,
+                           eta=0.05,
+                           objective= "reg:squarederror")
+set.seed(4554)
+modelo_xgb_sin_log <- xgb.train(params = params_xgb_sin_log,
+                                data = df_ent_sin_log,
+                                nrounds = 3000,
+                                evals = list(train = df_ent_sin_log , val = df_val_sin_log),
+                                early_stopping_rounds = 50,
+                                verbose = 0)
+pred_res_xgb_sin_log  <-  predict(modelo_xgb_sin_log, newdata = df_res_sin_log)
+
+
+####################################
+### Funciones para cada modelos ####
+####################################
+funcion_para_metricas_casos <- function(real_log, pred_log, es_log = T) {
+  if (es_log) {
+    real_eur <- exp(real_log)
+    pred_eur <- exp(pred_log)
+
+    rss <- sum((real_log - pred_log)^2)
+    tss <- sum((real_log - mean(real_log))^2)
+    r2_log <-  round(1- (rss/tss),4)
+    rmse_log <- round(sqrt(mean((real_log - pred_log)^2)),4)
+  } else{
+    real_eur <-  real_log
+    pred_eur <- pred_log
+    r2_log <- NA_real_
+    rmse_log <- NA_real_
+  }
+
+  err_abs <- abs(real_eur - pred_eur)
+  mae_eur <- round(mean(err_abs), 2)
+  rmse_eur <- round(sqrt(mean((real_eur - pred_eur)^2)),2)
+  med_ae_eur <-  round(median(err_abs),2)
+
+  return(data.frame(
+    R2_log = r2_log,
+    RMSE_log = rmse_log,
+    MAE_euros = mae_eur,
+    RMSE_euros = rmse_eur,
+    Mediana_AE_euros = med_ae_eur
+  ))
+}
+pred_res_xgb_caso1 <-  predict(modelo_xgb, newdata = dtest)
+pred_val_xgb_caso1 <- predict(modelo_xgb, newdata = dval)
+
+tabla_comparativa_validacion <- bind_rows(
+  # Casos de la log + lati/long
+  data.frame(Caso = "1. Con Log + Con Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_validacion, predicciones_validacion, es_log = TRUE)),
+  data.frame(Caso = "1. Con Log + Con Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_validacion, df_resultados_validacion_gam$prediccion_log, es_log = TRUE)),
+  data.frame(Caso = "1. Con Log + Con Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_validacion, pred_val_xgb_caso1, es_log = TRUE)),
+
+  # Caso sin log (Euros directos) + long + lati
+  data.frame(Caso = "2. Sin Log (Euros) + Con Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_val_sin_log, pred_val_lasso_sin_log, es_log = FALSE)),
+  data.frame(Caso = "2. Sin Log (Euros) + Con Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_val_sin_log, pred_val_gam_sin_log, es_log = FALSE)),
+  data.frame(Caso = "2. Sin Log (Euros) + Con Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_val_sin_log, predict(modelo_xgb_sin_log,newdata=df_val_sin_log), es_log = FALSE)),
+
+
+  # casos con log + sin (latitud y longitud)
+
+  data.frame(Caso = "3. Con Log + Sin Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_val_sin_ll, pred_val_lasso_sin_ll, es_log = TRUE)),
+  data.frame(Caso = "3. Con Log + Sin Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_val_sin_ll, pred_val_gam_sin_ll, es_log = TRUE)),
+  data.frame(Caso = "3. Con Log + Sin Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_val_sin_ll, pred_val_xgb_sg, es_log = TRUE))
+
+
+)
+
+print(tabla_comparativa_validacion)
+
+
+
+
+
+
+###### Mejor modelo XGBoost
+
+df_residuos_xgb <- df_reserva %>%
+  mutate( pred_log = pred_res_xgb_caso1,
+          real_log = log_valeur_fonciere,
+          res_log = real_log - pred_log,
+          # Residuo en escala Log
+          real_eur = exp(real_log),
+          pred_eur = exp(pred_log),
+          res_eur = real_eur - pred_eur)
+
+# Residuos vs valores predichos
+library(ggplot2)
+library(gridExtra)
+
+g1 <-  ggplot(df_residuos_xgb, aes(x = pred_log, y = res_log)) +
+  geom_point(alpha = 0.3, color = "#2c3e50") +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed", size = 1) +
+  geom_smooth(method = "loess", color = "blue", se = FALSE) +
+  theme_minimal() +
+  labs( title = "1. Residuos vs. Predichos (Escala Log)", x = "Log(Precio Predicho)", y = "Residuo Log (Real - Predicho)" )
+
+#Histograma y Densidad de Residuos (Simetría del Error)
+
+g2 <-  ggplot(df_residuos_xgb, aes(x = res_log)) +
+  geom_histogram(aes(y = ..density..), bins = 50, fill = "#3498db", color = "white", alpha = 0.7) +
+  geom_density(color = "darkblue", size = 1) +
+  geom_vline(xintercept = 0, color = "red", linetype = "dashed", size = 1) +
+  theme_minimal() +
+  labs( title = "2. Distribución de los Residuos (Log)", x = "Residuo Log", y = "Densidad" )
+
+
+# Q-Q Plot (Evaluación de Normalidad y Colas Pesadas)
+g3  <-  ggplot(df_residuos_xgb, aes(sample = res_log)) +
+  stat_qq(color = "#2c3e50", alpha = 0.4) +
+  stat_qq_line(color = "red", linetype = "dashed", size = 1) +
+  theme_minimal() +
+  labs( title = "3. Gráfico Q-Q Normal de Residuos", x = "Cuantiles Teóricos", y = "Cuantiles de los Residuos" )
+
+
+
+g4 <- ggplot(df_residuos_xgb, aes(x = longitude, y = latitude, color = res_log)) +
+  geom_point(alpha = 0.6, size = 1.5) +
+  scale_color_gradient2( low = "#e74c3c", mid = "#f1c40f", high = "#2ecc71", midpoint = 0, name = "Residuo Log" ) +
+  theme_minimal() + labs( title = "4. Distribución Espacial del Error", x = "Longitud", y = "Latitud" )
+grid.arrange(g1, g2, g3, ncol = 3)
+
+
+
+
+# 1. Mapa de puntos según el precio en escala logarítmica
+ggplot(df_modelamiento_listo, aes(x = longitude, y = latitude, color = log_valeur_fonciere)) +
+  geom_point(alpha = 0.5, size = 1.2) + scale_color_viridis_c(option = "magma", name = "Log(Precio)") +
+  theme_minimal() + labs( title = "Distribución Geográfica de Transacciones Inmobiliarias", subtitle = "Departamento de Rhône, Francia", x = "Longitud", y = "Latitud" ) +
+  coord_quickmap() # Mantiene la proporción geográfica correcta
+
+
+library(maps)
+# Cargar mapa base de departamentos franceses
+mapa_francia <-  map_data("france")
+mapa_rhone <-  mapa_francia %>% filter(region == "Rhone")
+
+ggplot() +
+  # Dibujar mapa de Francia de fondo
+  geom_polygon(data = mapa_francia, aes(x = long, y = lat, group = group), fill = "#181818", color = "#333333") +
+  # Superponer los datos inmobiliarios
+  geom_point(data = df_modelamiento_listo, aes(x = longitude, y = latitude, color = log_valeur_fonciere), alpha = 0.6, size = 1) +
+  scale_color_viridis_c(name = "Log(Precio)", option = "viridis") +
+  scale_color_gradient( name = "Log(Precio)", low = "#f1c40f",
+                        high = "#ffffff" ) +
+# Limitar los ejes a la región de Rhône (Lat \~45.4 a 46.3, Long \~4.3 a 5.3)
+  coord_fixed(xlim = c(4.3, 5.3), ylim = c(45.4, 46.3), ratio = 1.3) +
+  theme_minimal() +
+  labs( title = "Ubicación de Propiedades en Rhône (Francia)", x = "Longitud", y = "Latitud" )
+
+
+ggplot() +
+  # 2. Dibujar todo el fondo de Francia en gris muy oscuro
+  geom_polygon( data = mapa_francia,
+                aes(x = long, y = lat, group = group),
+                fill = "#181818", color = "#333333" ) +
+  # 3. DESTACAR EN GRANDE Y RELLENAR EL DEPARTAMENTO DE RHÔNE EN AMARILLO
+  geom_polygon( data = mapa_rhone,
+                aes(x = long, y = lat, group = group),
+                fill = "#f1c40f", # Amarillo brillante para toda la zona
+                color = "#f39c12", # Borde amarillo-naranja
+                size = 0.8 ) +
+  # 4. Superponer las propiedades como puntos blancos relucientes
+  geom_point( data = df_modelamiento_listo,
+              aes(x = longitude, y = latitude), color = "gray",
+              # Puntos en blanco puro
+              alpha = 0.7, size = 1.1 ) +
+  # 5. Encuadre y Zoom exacto al área de Rhône
+  coord_fixed(xlim = c(4.3, 5.3), ylim = c(45.4, 46.3), ratio = 1.3) +
+  # 6\. Estilo Modo Oscuro (Dark Theme)
+  theme_minimal() +
+  theme( plot.background = element_rect(fill = "black", color = "black"),
+         panel.background = element_rect(fill = "black", color = "black"),
+         panel.grid.major = element_line(color = "#222222", linetype = "dotted"),
+         panel.grid.minor = element_blank(), plot.title = element_text(color = "white", face = "bold", size = 14),
+         axis.title = element_text(color = "white"), axis.text = element_text(color = "#cccccc") ) +
+  labs( title = "Ubicación de Propiedades en el Departamento de Rhône (Francia)", x = "Longitud", y = "Latitud" )
+
+
 
