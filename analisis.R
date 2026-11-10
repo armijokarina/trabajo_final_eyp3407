@@ -521,6 +521,45 @@ coordenadas_recuperadas <- transacciones_dvf %>%
 df_modelamiento_listo <- df_modelamiento_listo %>%
   left_join(coordenadas_recuperadas, by = "id_mutation")
 cat("Transacciones sin latitud/longitud:", sum(is.na(df_modelamiento_listo$latitude)), "\n")
+
+# REEMPLAZO DE LOS DATOS FALTANTES (MEDIANA DE LA COMUNA)--------------------
+
+# Imputación por la mediana geográfica de la comuna
+df_modelamiento_listo <- df_modelamiento_listo %>%
+  group_by(code_commune, nom_commune) %>%
+  mutate(
+    latitude = ifelse(
+      is.na(latitude),
+      median(latitude, na.rm = TRUE),
+      latitude
+    ),
+    longitude = ifelse(
+      is.na(longitude),
+      median(longitude, na.rm = TRUE),
+      longitude
+    )
+  ) %>%
+  ungroup() %>%
+  # Fallback de seguridad: si una comuna entera tuviera solo NAs,
+  # imputa con la mediana global de todo el departamento 69
+  mutate(
+    latitude = ifelse(
+      is.na(latitude),
+      median(latitude, na.rm = TRUE),
+      latitude
+    ),
+    longitude = ifelse(
+      is.na(longitude),
+      median(longitude, na.rm = TRUE),
+      longitude
+    )
+  )
+
+
+
+
+
+
 df_desarrollo <- df_modelamiento_listo %>%
   filter(año %in% c(2021, 2022)) %>%
   select(
@@ -787,7 +826,7 @@ set.seed(4554)
 modelo_xgb <- xgb.train(
   params = parametros_xgb,
   data = dtrain,
-  nrounds = 1000,
+  nrounds = 3000,
   evals = list(train = dtrain, val = dval),
   early_stopping_rounds = 50,
   print_every_n = 100
@@ -824,4 +863,3 @@ cat("Mediana Error Absoluto: €", round(med_ae_eur_xgb, 0), "\n\n")
 importancia_xgb <- xgb.importance(feature_names = colnames(x_entrenamiento), model = modelo_xgb)
 xgb.plot.importance(importancia_xgb, top_n = 10, main = "Importancia de Variables - XGBoost", col = "darkred")
 
-unique(df_modelamiento_listo$nom_commune)
