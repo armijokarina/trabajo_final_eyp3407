@@ -496,6 +496,14 @@ tabla_resumen_1 <- tibble( paso= 0:14,
 print(tabla_resumen_1)
 View(tabla_resumen_1)
 
+rm(combinaciones_detalladas,df_limpio_final,df_limpio_prueba,df_limpio_sin_puro_NA,
+   df_limpio_sin_dependencia,df_limpio_sin_comercial,df_limpio_sin_DEPENDENCIA_NA,df_limpio_sin_mixtos
+   ,df_modelamiento1,df_modelamiento,df_modelamiento_final,df_modelamiento2,df_modelamiento3,
+   df_modelamiento_final_final,df_limpio_sin_dos_viviendas,diagnostico,precios_superface,precios_altos_m2,precios_bajos,
+   df_sin_duplicados, paso_1, paso_na,b1,b2,b3,conteos_t,conteos_tfilas
+   ,ids_a_borrar,ids_manuales,t_1,t_2,t_3,t_4,t_5,t_6,t_7,t_8,t_9,t_10,t1,t2,t3,t4,t5
+   ,t6,t7,t8,t9,t10,t11,t12,t13,t14,t_11,t_12,t_13,t_14,na_summary,total_datos,total_FILAS,contar_outliers)
+
 library(glmnet)
 
 df_modelamiento_listo$año <- substr(df_modelamiento_listo$date_mutation, 1, 4)
@@ -559,6 +567,23 @@ df_resultados_reserva <- df_reserva %>%
     precio_predicho_euros = exp(prediccion_log)
   )
 
+##### Variables eliminadas de Lasso #####
+
+matriz_coef<- as.matrix(coef(modelo_lasso_cv,s=mejor_lambda))
+df_coeficientes <- data.frame( Variable = rownames(matriz_coef),
+                               Coeficientes = matriz_coef[,1],
+                               stringsAsFactors = FALSE)
+
+df_conservadas <- df_coeficientes %>%
+  filter(Coeficientes != 0)
+
+df_eliminadas <- df_coeficientes %>%
+  filter(Coeficientes == 0 )
+print( "Variables conservadas del modelo \n")
+print(df_conservadas)
+cat("\n")
+print( "Variables eliminadas del modelo \n")
+print(df_eliminadas)
 
 # 1. Función para calcular las métricas de evaluación
 calcular_metricas <- function(real, predicho) {
