@@ -7,7 +7,7 @@
 * Alexander Pinto
 * Karina Armijo
 * Pía Mella
-## 1. Descripción del Proyecto y Caso Asignado
+##  Descripción del Proyecto y Caso Asignado
 Este repositorio contiene el código, los datos y el informe final 
 correspondientes al **Caso 09**, enfocado en la predicción del valor de 
 compraventas residenciales a partir de la base de datos 
@@ -17,7 +17,14 @@ la depuración y reconstrucción de la unidad transacción, la partición tempor
 el ajuste de modelos de referencia, LASSO, GAM y XGBoost, y la evaluación de su 
 desempeño fuera del ajuste
 
-## 2. Entorno y Requisitos de Software
+## Estructura del Repositorio
+
+* `analisis.R`: Script principal en R que automatiza todo el flujo de trabajo (depuración, ingeniería de características, partición temporal, ajuste de modelos LASSO, GAM y XGBoost, y cálculo de métricas de desempeño).
+* `Informe.pdf`: Código fuente y documento final compilado del informe de investigación.
+* `datos/`: Carpeta destinada a almacenar los datos fuente comprimidos requeridos para la ejecución.
+* `.gitignore`: Archivo de configuración para excluir archivos temporales o pesados innecesarios del control de versiones.
+
+##  Entorno y Requisitos de Software
 El análisis fue desarrollado completamente en el lenguaje **R**. Asegúrate de 
 tener instalado las siguientes librerías necesarias para la ejecución del 
 script:
