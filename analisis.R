@@ -1,3 +1,5 @@
+system.time({
+
 library(dplyr)
 #########################################
 #### Todas las posibles Combinaciones ###
@@ -1166,34 +1168,78 @@ funcion_para_metricas_casos <- function(real_log, pred_log, es_log = T) {
   ))
 }
 pred_res_xgb_caso1 <-  predict(modelo_xgb, newdata = dtest)
-pred_val_xgb_caso1 <- predict(modelo_xgb, newdata = dvalal)
+pred_val_xgb_caso1 <- predict(modelo_xgb, newdata = dval)
 
-tabla_comparativa_validacion <- bind_rows(
+#############################################
+#### tabla  comparativa datos de prueba ####
+#############################################
+tabla_comparativa_prueba <- bind_rows(
   # Casos de la log + lati/long
-  data.frame(Caso = "1. Con Log + Con Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_validacion, predicciones_validacion, es_log = TRUE)),
-  data.frame(Caso = "1. Con Log + Con Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_validacion, df_resultados_validacion_gam$prediccion_log, es_log = TRUE)),
-  data.frame(Caso = "1. Con Log + Con Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_validacion, pred_val_xgb_caso1, es_log = TRUE)),
+  data.frame(Caso = "Con Log + Con Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_reserva, predicciones_reserva, es_log = TRUE)),
+  data.frame(Caso = "Con Log + Con Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_reserva, df_resultados_reserva_gam$prediccion_log, es_log = TRUE)),
+  data.frame(Caso = "Con Log + Con Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_reserva, pred_res_xgb_caso1, es_log = TRUE)),
 
   # Caso sin log (Euros directos) + long + lati
-  data.frame(Caso = "2. Sin Log (Euros) + Con Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_val_sin_log, pred_val_lasso_sin_log, es_log = FALSE)),
-  data.frame(Caso = "2. Sin Log (Euros) + Con Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_val_sin_log, pred_val_gam_sin_log, es_log = FALSE)),
-  data.frame(Caso = "2. Sin Log (Euros) + Con Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_val_sin_log, predict(modelo_xgb_sin_log,newdata=df_val_sin_log), es_log = FALSE)),
+  data.frame(Caso = "Sin Log (Euros) + Con Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_res_sin_log, pred_res_lasso_sin_log, es_log = FALSE)),
+  data.frame(Caso = "Sin Log (Euros) + Con Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_res_sin_log, pred_reserva_gam_sin_log, es_log = FALSE)),
+  data.frame(Caso = "Sin Log (Euros) + Con Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_res_sin_log, pred_res_xgb_sin_log, es_log = FALSE)),
 
 
   # casos con log + sin (latitud y longitud)
 
-  data.frame(Caso = "3. Con Log + Sin Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_val_sin_ll, pred_val_lasso_sin_ll, es_log = TRUE)),
-  data.frame(Caso = "3. Con Log + Sin Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_val_sin_ll, pred_val_gam_sin_ll, es_log = TRUE)),
-  data.frame(Caso = "3. Con Log + Sin Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_val_sin_ll, pred_val_xgb_sg, es_log = TRUE))
+  data.frame(Caso = "Con Log + Sin Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_res_sin_ll, pred_res_lasso_sin_ll, es_log = TRUE)),
+  data.frame(Caso = "Con Log + Sin Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_res_sin_ll, pred_res_gam_sin_ll, es_log = TRUE)),
+  data.frame(Caso = "Con Log + Sin Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_res_sin_ll, pred_res_xgb_sg, es_log = TRUE))
 
 
 )
 
-print(tabla_comparativa_validacion)
+print(tabla_comparativa_prueba)
 
 
 
 
+
+tabla_comparativa_validacion <- bind_rows(
+  # Casos de la log + lati/long
+  data.frame(Caso = "Con Log + Con Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_validacion, predicciones_validacion, es_log = TRUE)),
+  data.frame(Caso = "Con Log + Con Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_validacion, df_resultados_validacion_gam$prediccion_log, es_log = TRUE)),
+  data.frame(Caso = "Con Log + Con Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_validacion, pred_val_xgb_caso1, es_log = TRUE)),
+
+  # Caso sin log (Euros directos) + long + lati
+  data.frame(Caso = "Sin Log (Euros) + Con Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_val_sin_log, pred_val_lasso_sin_log, es_log = FALSE)),
+  data.frame(Caso = "Sin Log (Euros) + Con Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_val_sin_log, pred_val_gam_sin_log, es_log = FALSE)),
+  data.frame(Caso = "Sin Log (Euros) + Con Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_val_sin_log, predict(modelo_xgb_sin_log,newdata=df_val_sin_log), es_log = FALSE)),
+
+
+  # casos con log + sin (latitud y longitud)
+
+  data.frame(Caso = "Con Log + Sin Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_val_sin_ll, pred_val_lasso_sin_ll, es_log = TRUE)),
+  data.frame(Caso = "Con Log + Sin Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_val_sin_ll, pred_val_gam_sin_ll, es_log = TRUE)),
+  data.frame(Caso = "Con Log + Sin Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_val_sin_ll, pred_val_xgb_sg, es_log = TRUE))
+
+
+)
+
+
+
+
+#######################
+### Referencia
+#######################
+# 1. Calcular la referencia en Entrenamiento
+referencia_tipo  <-  df_entrenamiento %>% group_by(type_local) %>% summarise(mediana_log = median(log_valeur_fonciere))
+# 2. Asignar la predicción fija a la base de Prueba (Reserva)
+df_validacion_ref <-  df_validacion %>% left_join(referencia_tipo, by = "type_local")
+
+pred_validacion_referencia <-  df_validacion_ref$mediana_log
+
+metricas_ref <-  funcion_para_metricas_casos( real_log = df_validacion$log_valeur_fonciere, pred_log = pred_validacion_referencia, es_log = TRUE )
+# Creamos la fila de Referencia y la unimos a tu
+tabla_fila_referencia  <-  data.frame( Caso = " Referencia (Mediana por tipo)", Modelo = "Baseline", metricas_ref )
+
+tabla_final_con_referencia <-  bind_rows(tabla_fila_referencia, tabla_comparativa_validacion)
+print(tabla_final_con_referencia)
 
 
 ###### Mejor modelo XGBoost
@@ -1288,5 +1334,6 @@ ggplot() +
          axis.title = element_text(color = "white"), axis.text = element_text(color = "#cccccc") ) +
   labs( title = "Ubicación de Propiedades en el Departamento de Rhône (Francia)", x = "Longitud", y = "Latitud" )
 
-
+resultado <- sum(1:10000000)
+})
 
