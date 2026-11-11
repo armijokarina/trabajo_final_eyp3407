@@ -1170,6 +1170,30 @@ pred_res_xgb_caso1 <-  predict(modelo_xgb, newdata = dtest)
 pred_val_xgb_caso1 <- predict(modelo_xgb, newdata = dval)
 
 #############################################
+#### tabla  comparativa datos de validacion ####
+#############################################
+tabla_comparativa_validacion <- bind_rows(
+  # Casos de la log + lati/long
+  data.frame(Caso = "Con Log + Con Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_validacion, predicciones_validacion, es_log = TRUE)),
+  data.frame(Caso = "Con Log + Con Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_validacion, df_resultados_validacion_gam$prediccion_log, es_log = TRUE)),
+  data.frame(Caso = "Con Log + Con Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_validacion, pred_val_xgb_caso1, es_log = TRUE)),
+
+  # Caso sin log (Euros directos) + long + lati
+  data.frame(Caso = "Sin Log (Euros) + Con Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_val_sin_log, pred_val_lasso_sin_log, es_log = FALSE)),
+  data.frame(Caso = "Sin Log (Euros) + Con Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_val_sin_log, pred_val_gam_sin_log, es_log = FALSE)),
+  data.frame(Caso = "Sin Log (Euros) + Con Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_val_sin_log, predict(modelo_xgb_sin_log,newdata=df_val_sin_log), es_log = FALSE)),
+
+
+  # casos con log + sin (latitud y longitud)
+
+  data.frame(Caso = "Con Log + Sin Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_val_sin_ll, pred_val_lasso_sin_ll, es_log = TRUE)),
+  data.frame(Caso = "Con Log + Sin Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_val_sin_ll, pred_val_gam_sin_ll, es_log = TRUE)),
+  data.frame(Caso = "Con Log + Sin Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_val_sin_ll, pred_val_xgb_sg, es_log = TRUE))
+
+
+)
+
+#############################################
 #### tabla  comparativa datos de prueba ####
 #############################################
 tabla_comparativa_prueba <- bind_rows(
@@ -1193,38 +1217,9 @@ tabla_comparativa_prueba <- bind_rows(
 
 )
 
-print(tabla_comparativa_prueba)
-
-
-
-
-
-tabla_comparativa_validacion <- bind_rows(
-  # Casos de la log + lati/long
-  data.frame(Caso = "Con Log + Con Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_validacion, predicciones_validacion, es_log = TRUE)),
-  data.frame(Caso = "Con Log + Con Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_validacion, df_resultados_validacion_gam$prediccion_log, es_log = TRUE)),
-  data.frame(Caso = "Con Log + Con Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_validacion, pred_val_xgb_caso1, es_log = TRUE)),
-
-  # Caso sin log (Euros directos) + long + lati
-  data.frame(Caso = "Sin Log (Euros) + Con Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_val_sin_log, pred_val_lasso_sin_log, es_log = FALSE)),
-  data.frame(Caso = "Sin Log (Euros) + Con Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_val_sin_log, pred_val_gam_sin_log, es_log = FALSE)),
-  data.frame(Caso = "Sin Log (Euros) + Con Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_val_sin_log, predict(modelo_xgb_sin_log,newdata=df_val_sin_log), es_log = FALSE)),
-
-
-  # casos con log + sin (latitud y longitud)
-
-  data.frame(Caso = "Con Log + Sin Lat/Long", Modelo = "Lasso", funcion_para_metricas_casos(y_val_sin_ll, pred_val_lasso_sin_ll, es_log = TRUE)),
-  data.frame(Caso = "Con Log + Sin Lat/Long", Modelo = "GAM", funcion_para_metricas_casos(y_val_sin_ll, pred_val_gam_sin_ll, es_log = TRUE)),
-  data.frame(Caso = "Con Log + Sin Lat/Long", Modelo = "XGBoost", funcion_para_metricas_casos(y_val_sin_ll, pred_val_xgb_sg, es_log = TRUE))
-
-
-)
-
-
-
 
 #######################
-### Referencia
+### Referencia validacion####
 #######################
 # 1. Calcular la referencia en Entrenamiento
 referencia_tipo  <-  df_entrenamiento %>% group_by(type_local) %>% summarise(mediana_log = median(log_valeur_fonciere))
