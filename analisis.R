@@ -820,6 +820,18 @@ cat("MAE (Euros): €", round(mae_eur_xgb, 0), "\n")
 cat("RMSE (Euros): €", round(rmse_eur_xgb, 0), "\n")
 cat("Mediana Error Absoluto: €", round(med_ae_eur_xgb, 0), "\n\n")
 
+#error por tipo de vivienda para xgboosting
+errores_tipo_xgb <- df_resultados_reserva_xgb %>%
+  group_by(type_local) %>%
+  summarise(
+    N_Transacciones = n(),
+    MAE_Euros = mean(error_abs_euros),
+    RMSE_Euros = sqrt(mean((precio_real_euros - precio_predicho_euros)^2))
+  )
+
+print("=== ERRORES POR TIPO DE VIVIENDA (XGBOOST) ===")
+print(errores_tipo_xgb)
+
 # examen de alto valor xgboost
 umbral_alto_valor_xgb <- quantile(df_resultados_reserva_xgb$precio_real_euros, 0.95)
 
@@ -841,10 +853,6 @@ evaluacion_alto_valor_xgb <- df_resultados_reserva_xgb %>%
 print("=== DESEMPEÑO EN VENTAS DE ALTO VALOR (XGBOOST) ===")
 print(evaluacion_alto_valor_xgb)
 
-
-# Gráfico de Importancia de Variables
-importancia_xgb <- xgb.importance(feature_names = colnames(x_entrenamiento), model = modelo_xgb)
-xgb.plot.importance(importancia_xgb, top_n = 10, main = "Importancia de Variables - XGBoost", col = "darkred")
 
 
 #############################################
