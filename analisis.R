@@ -1106,7 +1106,7 @@ modelo_gam_sin_log <- gam(valeur_fonciere ~ type_local + s(surface_habitable,k=1
                           + latitude + longitude, data = df_entrenamiento_sin_log,
                           method = "REML")
 
-
+#alo
 pred_val_gam_sin_log <- predict(modelo_gam_sin_log, newdata = df_validacion_sin_log)
 pred_reserva_gam_sin_log <- predict(modelo_gam_sin_log,newdata = df_reserva_sin_log)
 mae_gam_sin_log <- mean(abs(df_reserva_sin_log$valeur_fonciere-pred_reserva_gam_sin_log))
