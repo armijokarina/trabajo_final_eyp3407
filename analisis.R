@@ -765,7 +765,7 @@ evaluacion_alto_valor_gam <- df_evaluacion_gam %>%
   )
 
 print("=== DESEMPEÑO EN VENTAS DE ALTO VALOR (GAM) ===")
-print(evaluacion_alto_valor_lasso)
+print(evaluacion_alto_valor_gam)
 
 
 #############################################
@@ -853,6 +853,9 @@ evaluacion_alto_valor_xgb <- df_resultados_reserva_xgb %>%
 print("=== DESEMPEÑO EN VENTAS DE ALTO VALOR (XGBOOST) ===")
 print(evaluacion_alto_valor_xgb)
 
+# Gráfico de Importancia de Variables
+importancia_xgb <- xgb.importance(feature_names = colnames(x_entrenamiento), model = modelo_xgb)
+xgb.plot.importance(importancia_xgb, top_n = 10, main = "Importancia de Variables - XGBoost", col = "darkred")
 
 
 #############################################
