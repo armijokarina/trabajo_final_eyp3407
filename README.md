@@ -36,3 +36,8 @@ script:
 * `mgcv`
 * `xgboost`
 
+##  Instrucciones para acceder a los datos
+
+Los datos se encuentran almacenados en el archivo comprimido `datos.zip`, el cual debe ser descomprimido antes de comenzar. En su interior se encuentra el archivo `transacciones_dvf.csv`, que debe cargarse en R en formato CSV, especificando que la primera fila contiene los nombres de las variables (`header = TRUE`). Una vez realizado este procedimiento, se podrá comenzar con la ejecución del código.
+
+
