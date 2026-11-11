@@ -1106,7 +1106,6 @@ modelo_gam_sin_log <- gam(valeur_fonciere ~ type_local + s(surface_habitable,k=1
                           + latitude + longitude, data = df_entrenamiento_sin_log,
                           method = "REML")
 
-#alo
 pred_val_gam_sin_log <- predict(modelo_gam_sin_log, newdata = df_validacion_sin_log)
 pred_reserva_gam_sin_log <- predict(modelo_gam_sin_log,newdata = df_reserva_sin_log)
 mae_gam_sin_log <- mean(abs(df_reserva_sin_log$valeur_fonciere-pred_reserva_gam_sin_log))
@@ -1240,6 +1239,26 @@ tabla_fila_referencia  <-  data.frame( Caso = " Referencia (Mediana por tipo)", 
 
 tabla_final_con_referencia <-  bind_rows(tabla_fila_referencia, tabla_comparativa_validacion)
 print(tabla_final_con_referencia)
+
+
+#####################################
+#### Modelo Referencia Prueba ######
+#####################################
+
+
+referencia_tipo  <-  df_entrenamiento %>% group_by(type_local) %>% summarise(mediana_log = median(log_valeur_fonciere))
+df_reserva_ref <-  df_reserva %>% left_join(referencia_tipo, by = "type_local")
+
+pred_res_referencia <- df_reserva_ref$mediana_log
+
+metricas_ref_prueba <-  funcion_para_metricas_casos( real_log = df_reserva$log_valeur_fonciere,
+                                                     pred_log = pred_res_referencia, es_log = TRUE )
+tabla_fila_referencia_prueba  <-  data.frame( Caso = " Referencia Prueba (Mediana por tipo)", Modelo = "Baseline", metricas_ref_prueba)
+
+tabla_final_con_referencia_prueba <-  bind_rows(tabla_fila_referencia_prueba, tabla_comparativa_prueba)
+print(tabla_final_con_referencia_prueba)
+
+
 
 
 ###### Mejor modelo XGBoost
